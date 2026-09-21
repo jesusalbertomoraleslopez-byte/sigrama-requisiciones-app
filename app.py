@@ -88,6 +88,7 @@ if FAVICON_PATH.exists():
 
 # Inyección de CSS Oficial SIGRAMA (PANTONE 485 C & PANTONE Black 7 C)
 embed_css = """
+<style>
     /* Modo incrustado en Concentradora SIGRAMA */
     header[data-testid="stHeader"], footer, div[data-testid="stDecoration"] {
         display: none !important;
@@ -96,13 +97,15 @@ embed_css = """
         padding-top: 1.2rem !important;
         padding-bottom: 2rem !important;
     }
-""" if is_embedded else ""
+</style>
+"""
 
-st.markdown(f"""
+if is_embedded:
+    st.markdown(embed_css, unsafe_allow_html=True)
+
+st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Questrial&display=swap');
-    {embed_css}
-
 
     /* Tipografías Oficiales */
     html, body, [class*="css"], .stApp {
