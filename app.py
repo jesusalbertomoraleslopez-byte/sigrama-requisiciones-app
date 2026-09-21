@@ -233,9 +233,124 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
+def check_authentication():
+    """Valida credenciales de acceso institucional (jmorales / SigramaAdmin2026) y SSO."""
+    if st.session_state.get("authenticated", False):
+        return True
+
+    # Soporte SSO robusto desde Concentradora SIGRAMA
+    try:
+        qp = dict(st.query_params) if hasattr(st, "query_params") else {}
+        sso_token = qp.get("sso_token")
+        if isinstance(sso_token, list): sso_token = sso_token[0] if sso_token else None
+        sso_user_q = qp.get("sso_user")
+        if isinstance(sso_user_q, list): sso_user_q = sso_user_q[0] if sso_user_q else None
+        sso_role_q = qp.get("sso_role", "Admin")
+        if isinstance(sso_role_q, list): sso_role_q = sso_role_q[0] if sso_role_q else "Admin"
+
+        if sso_token == "SIGRAMA_AUTH_TOKEN" and sso_user_q:
+            u_clean = str(sso_user_q).strip().lower()
+            es_admin = sso_role_q == "Admin" or "jmorales" in u_clean or "admin" in u_clean or "morales" in u_clean
+            st.session_state["authenticated"] = True
+            st.session_state["usuario"] = sso_user_q
+            st.session_state["usuario_actual"] = sso_user_q
+            st.session_state["rol"] = "Admin" if es_admin else sso_role_q
+            st.session_state["sso_user"] = sso_user_q
+            st.session_state["sso_role"] = "Admin" if es_admin else sso_role_q
+            if es_admin:
+                st.session_state["admin_authenticated"] = True
+            return True
+    except Exception:
+        pass
+
+    # Si ya tiene sesión guardada
+    if st.session_state.get("authenticated", False):
+        return True
+
+    # Ocultar barra lateral si no ha iniciado sesión
+    st.markdown("""
+    <style>
+        [data-testid="stSidebar"] { display: none !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    col_l1, col_l2, col_l3 = st.columns([1, 1.3, 1])
+    with col_l2:
+        st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
+        if LOGO_SIGRAMA_PATH.exists():
+            with open(LOGO_SIGRAMA_PATH, "rb") as f:
+                b64_login_logo = base64.b64encode(f.read()).decode()
+            st.markdown(f"""
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="background: #FFFFFF; display: inline-block; padding: 12px 24px; border-radius: 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); margin-bottom: 12px;">
+                    <img src="data:image/png;base64,{b64_login_logo}" style="width: 170px; height: auto; display: block;" alt="Industria Sigrama">
+                </div>
+                <h3 style="font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: 900; color: #111111; margin: 4px 0 2px 0;">
+                    REQUISICIONES DE COMPRA
+                </h3>
+                <p style="color: #64748B; font-size: 13px; margin: 0; font-family: 'Questrial', sans-serif;">
+                    Industria SIGRAMA S.A. de C.V. &bull; Acceso Autorizado
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="font-family: 'Montserrat', sans-serif; color: #EC2024; font-weight: 900; margin: 0;">INDUSTRIA SIGRAMA</h2>
+                <h4 style="font-family: 'Montserrat', sans-serif; color: #111111; margin: 4px 0 0 0;">REQUISICIONES DE COMPRA</h4>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with st.form("form_login_requisiciones", clear_on_submit=False):
+            st.markdown("""
+            <div style="background: rgba(236,32,36,0.08); border-left: 3px solid #EC2024; padding: 8px 12px; border-radius: 4px; margin-bottom: 14px;">
+                <span style="font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 700; color: #EC2024;">
+                    🔒 ACCESO DE ADMINISTRADOR
+                </span>
+                <div style="font-size: 11.5px; color: #475569; margin-top: 2px;">
+                    Ingrese con su usuario y contraseña de Administrador.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            user_val = st.text_input("👤 Usuario:", placeholder="jmorales o admin", key="auth_user_field")
+            pass_val = st.text_input("🔑 Contraseña:", type="password", placeholder="••••••••", key="auth_pass_field")
+
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+            btn_entrar = st.form_submit_button("Ingresar al Sistema", type="primary", use_container_width=True)
+
+            if btn_entrar:
+                u_clean = str(user_val).strip().lower()
+                p_clean = str(pass_val).strip()
+
+                valid_users = ["admin", "administrador", "jmorales", "sig-adm-01", "jesús morales", "jesus morales", "jesús alberto morales lópez", "jesus alberto morales lopez"]
+                valid_passwords = ["SigramaAdmin2026", "SigramaMetales2026", "Sigrama123!", "Admin2026", "admin", "sigrama2026", "MAQUINADOS"]
+                try:
+                    if hasattr(st, "secrets") and "admin_password" in st.secrets:
+                        valid_passwords.append(str(st.secrets["admin_password"]).strip())
+                except Exception:
+                    pass
+
+                if (u_clean in valid_users or "morales" in u_clean or "admin" in u_clean) and p_clean in valid_passwords:
+                    st.session_state["authenticated"] = True
+                    st.session_state["admin_authenticated"] = True
+                    st.session_state["usuario"] = "Jesús Alberto Morales López" if "morales" in u_clean or u_clean == "jmorales" else "admin"
+                    st.session_state["usuario_actual"] = st.session_state["usuario"]
+                    st.session_state["rol"] = "Admin"
+                    st.session_state["sso_user"] = st.session_state["usuario"]
+                    st.session_state["sso_role"] = "Admin"
+                    st.success("✅ Acceso concedido como Administrador. Cargando...")
+                    st.rerun()
+                else:
+                    st.error("❌ Credenciales inválidas. Verifique su usuario y contraseña.")
+        return False
+
+
 def main():
     """Función de arranque y enrutamiento modular del sistema."""
     init_databases()
+    if not check_authentication():
+        return
 
     # =========================================================================
     # SIDEBAR: IDENTIDAD CORPORATIVA SIGRAMA
@@ -265,14 +380,22 @@ def main():
 
         st.markdown("<hr style='border-color:#27272A;'>", unsafe_allow_html=True)
 
-        if sso_user:
+        cur_user = st.session_state.get("usuario") or sso_user
+        cur_role = st.session_state.get("rol") or sso_role
+        if cur_user:
             st.markdown(f"""
             <div style="background-color:#18181B; border:1px solid #3F3F46; border-radius:6px; padding:10px 12px; margin-bottom:12px;">
-                <div style="color:#A1A1AA; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">👤 Sesión Hub Conectada</div>
-                <div style="color:#FFFFFF; font-weight:bold; font-size:13px; margin-top:2px;">{sso_user}</div>
-                <div style="color:#EC2024; font-weight:700; font-size:11px; margin-top:1px;">Rol: {sso_role}</div>
+                <div style="color:#A1A1AA; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">👤 Sesión Conectada</div>
+                <div style="color:#FFFFFF; font-weight:bold; font-size:13px; margin-top:2px;">{cur_user}</div>
+                <div style="color:#EC2024; font-weight:700; font-size:11px; margin-top:1px;">Rol: {cur_role}</div>
             </div>
             """, unsafe_allow_html=True)
+            if not is_embedded and st.button("🚪 Cerrar Sesión", key="btn_logout_sidebar", use_container_width=True):
+                st.session_state["authenticated"] = False
+                st.session_state["admin_authenticated"] = False
+                st.session_state["usuario"] = None
+                st.session_state["rol"] = None
+                st.rerun()
 
         # Menú de Navegación por Fases
         menu_options = [
@@ -317,10 +440,12 @@ def main():
     # ENCABEZADO SUPERIOR CORPORATIVO EN EL ÁREA PRINCIPAL
     # =========================================================================
     user_header_badge = ""
-    if sso_user:
+    u_display = st.session_state.get("usuario") or sso_user
+    r_display = st.session_state.get("rol") or sso_role
+    if u_display:
         user_header_badge = f"""
             <span style="background-color:#F1F5F9; color:#0F172A; border:1px solid #CBD5E1; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:700; font-family:'Montserrat', sans-serif; margin-right:8px;">
-                👤 {sso_user}
+                👤 {u_display} ({r_display})
             </span>
         """
 

@@ -17,6 +17,7 @@ from config import (
     COLOR_PRIMARY,
     COLOR_SECONDARY,
     ADMIN_PIN_DEFAULT,
+    ADMIN_PASSWORDS,
     AREAS_IMPACTO_DEFAULT,
     SOLICITANTES_DEFAULT,
     PROVEEDORES_DEFAULT,
@@ -46,7 +47,12 @@ def render_admin_backup():
     </div>
     """, unsafe_allow_html=True)
 
-    # Control de Autenticación de Administrador
+    # Control de Autenticación de Administrador (Bypass automático si ya inició como Admin o jmorales)
+    user_role = st.session_state.get("sso_role", st.session_state.get("rol", "Usuario"))
+    user_name = str(st.session_state.get("sso_user", st.session_state.get("usuario", ""))).lower()
+    if user_role == "Admin" or "jmorales" in user_name or "admin" in user_name or "morales" in user_name:
+        st.session_state["admin_authenticated"] = True
+
     if "admin_authenticated" not in st.session_state:
         st.session_state["admin_authenticated"] = False
 
@@ -54,17 +60,24 @@ def render_admin_backup():
         st.markdown("##### Ingrese la Clave de Administrador:")
         col_pin, col_btn = st.columns([2, 1])
         with col_pin:
-            pin_input = st.text_input("PIN de Seguridad:", type="password", key="admin_pin_input")
+            pin_input = st.text_input("Clave de Administrador:", type="password", key="admin_pin_input")
         with col_btn:
             st.write("")
             st.write("")
             if st.button("Desbloquear Módulo", type="primary"):
-                if pin_input == ADMIN_PIN_DEFAULT or pin_input == "sigrama" or pin_input == "admin":
+                pin_clean = str(pin_input).strip()
+                valid_pins = list(ADMIN_PASSWORDS) + [ADMIN_PIN_DEFAULT, "SigramaAdmin2026", "sigrama2026", "sigrama", "admin"]
+                try:
+                    if hasattr(st, "secrets") and "admin_password" in st.secrets:
+                        valid_pins.append(str(st.secrets["admin_password"]).strip())
+                except Exception:
+                    pass
+                if pin_clean in valid_pins:
                     st.session_state["admin_authenticated"] = True
                     st.rerun()
                 else:
-                    st.error("PIN incorrecto. Intente nuevamente.")
-        st.info("💡 Para entorno local de desarrollo o demostración, la clave por defecto es: `sigrama2026`")
+                    st.error("PIN o Clave incorrecta. Intente nuevamente.")
+        st.info("💡 Clave de Administrador autorizada: `SigramaAdmin2026`")
         return
 
     # Si está autenticado, mostrar selector de tareas

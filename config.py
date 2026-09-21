@@ -144,7 +144,8 @@ MONEDAS_DEFAULT = ["MXN", "USD", "EUR"]
 PRIORIDADES_DEFAULT = ["Baja", "Media", "Alta", "Urgente"]
 
 # Clave de acceso para sección de mantenimiento (por defecto para entorno local)
-ADMIN_PIN_DEFAULT = "sigrama2026"
+ADMIN_PIN_DEFAULT = "SigramaAdmin2026"
+ADMIN_PASSWORDS = ["SigramaAdmin2026", "SigramaMetales2026", "Admin2026", "sigrama2026", "admin", "sigrama"]
 
 def normalize_req_id(req_id: str) -> str:
     """Normaliza un ID de requisición a un formato estándar 'REQ-XXXXX'."""
