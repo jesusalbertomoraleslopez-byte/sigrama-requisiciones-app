@@ -202,6 +202,12 @@ def render_requisition_wizard():
             index=["Baja", "Media", "Alta", "Urgente"].index(data_state.get("prioridad", "Media"))
         )
 
+    norm_check_id = normalize_req_id(req_id_input)
+    existing_rec = get_requisicion_by_id(norm_check_id)
+    if existing_rec:
+        ex_sol = existing_rec.get("folio_solicitud", "")
+        st.info(f"🔄 **Actualización de Requisición ({norm_check_id}):** Este folio ya se encuentra registrado con el consecutivo interno **{ex_sol}**. Al guardar se **actualizará** la información existente sin duplicar el número de requisición.")
+
     col_sol, col_area = st.columns([2, 1.5])
     with col_sol:
         # Índice seguro para solicitante

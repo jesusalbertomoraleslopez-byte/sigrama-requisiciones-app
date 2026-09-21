@@ -281,7 +281,19 @@ def load_requisiciones() -> pd.DataFrame:
         
         # Rellenar nulos y conciliar integridad consecutiva
         df = df.fillna("")
-        df, modified = reconcile_sol_consecutivos(df)
+        modified = False
+        
+        # Normalizar ID de requisición y garantizar unicidad absoluta
+        if "id_requisicion" in df.columns:
+            df["id_requisicion"] = df["id_requisicion"].apply(normalize_req_id)
+            if df["id_requisicion"].duplicated().any():
+                df = df.drop_duplicates(subset=["id_requisicion"], keep="last")
+                modified = True
+
+        df, rep_mod = reconcile_sol_consecutivos(df)
+        if rep_mod:
+            modified = True
+
         if modified:
             try:
                 _atomic_write_excel(df, EXCEL_REQUISICIONES_PATH)
@@ -337,6 +349,18 @@ def save_requisicion(data: Dict[str, Any]) -> bool:
     record["id_requisicion"] = norm_id
     record["ultima_modificacion"] = now_str
 
+    for num_col in ["monto_estimado", "monto_po"]:
+        val = record.get(num_col, 0.0)
+        try:
+            record[num_col] = float(val) if val not in ("", None) else 0.0
+        except Exception:
+            record[num_col] = 0.0
+    val_cot = record.get("num_cotizaciones", 0)
+    try:
+        record["num_cotizaciones"] = int(val_cot) if val_cot not in ("", None) else 0
+    except Exception:
+        record["num_cotizaciones"] = 0
+
     if norm_id in df["id_requisicion"].values:
         # Actualización
         idx = df[df["id_requisicion"] == norm_id].index[0]
@@ -359,6 +383,8 @@ def save_requisicion(data: Dict[str, Any]) -> bool:
             record["folio_solicitud"] = get_next_sol_consecutivo(df)
         df = pd.concat([df, pd.DataFrame([record])], ignore_index=True)
 
+    # Garantizar unicidad absoluta del número de requisición
+    df = df.drop_duplicates(subset=["id_requisicion"], keep="last")
     _atomic_write_excel(df, EXCEL_REQUISICIONES_PATH)
     return True
 
