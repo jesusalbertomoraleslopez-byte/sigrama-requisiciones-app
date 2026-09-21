@@ -411,10 +411,14 @@ def render_dashboard():
                 st.markdown(f"📌 **Folios marcados con casilla ({len(selected_records)}):**")
                 st.write(f"`{folios_str}`")
                 
+                # Obtener valores actuales de seguimiento para el resumen lateral
+                dias_aut_val = st.session_state.get("eml_dias_aut_batch", 3)
+                plazo_po_val = st.session_state.get("eml_plazo_po_batch", "1 semana posterior a autorización")
                 st.markdown(f"""
                 <div style="background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:12px; font-size:12px; color:#334155;">
                     <div>&bull; <strong>Presupuesto total del paquete:</strong> <span style="font-size:15px; font-weight:900; color:#EC2024;">${total_est_sel:,.2f} MXN</span></div>
                     <div style="margin-top:4px;">&bull; <strong>Documentos PDF adjuntos:</strong> <span style="font-weight:700; color:#0F172A;">{pdf_adjuntos_count} archivo(s)</span> (requisiciones originales y cotizaciones).</div>
+                    <div style="margin-top:4px;">&bull; <strong>Seguimiento Autorización:</strong> <span style="font-weight:700; color:#B45309;">{dias_aut_val} días hábiles</span> &bull; <strong>PO:</strong> <span style="font-weight:700; color:#0F172A;">{plazo_po_val}</span></div>
                     <div style="margin-top:4px;">&bull; <strong>Logotipo SIGRAMA:</strong> Incrustado inline nativo (160px) con borde institucional.</div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -438,16 +442,44 @@ def render_dashboard():
                         key="eml_planta_batch"
                     )
 
+                cf5, cf6 = st.columns(2)
+                with cf5:
+                    eml_dias_aut = st.number_input(
+                        "🚩 Seguimiento Autorización (días):",
+                        min_value=1,
+                        max_value=30,
+                        value=3,
+                        step=1,
+                        help="Días hábiles para recibir visto bueno. Activa recordatorio en Outlook.",
+                        key="eml_dias_aut_batch"
+                    )
+                with cf6:
+                    eml_plazo_po = st.text_input(
+                        "⏱️ Plazo estimado para PO:",
+                        value="1 semana posterior a autorización",
+                        help="Compromiso formal para emitir la Orden de Compra tras recibir el visto bueno.",
+                        key="eml_plazo_po_batch"
+                    )
+
                 # Generar archivo .eml consolidado en memoria
                 eml_bytes = build_consolidated_requisitions_eml(
                     selected_records,
                     destinatario_to=eml_to,
                     destinatarios_cc=eml_cc,
                     solicitante_remitente=eml_firma,
-                    planta=eml_planta
+                    planta=eml_planta,
+                    dias_autorizacion=int(eml_dias_aut),
+                    plazo_po=eml_plazo_po
                 )
 
-                tag_nombre = f"{len(selected_records)}_Requisiciones" if len(selected_records) > 1 else selected_records[0]["id_requisicion"]
+                if len(selected_records) == 1:
+                    r0 = selected_records[0]
+                    s0 = str(r0.get("folio_solicitud", "") or "").strip()
+                    rid0 = r0.get("id_requisicion", "REQ")
+                    tag_nombre = f"{s0}_{rid0}" if s0 else rid0
+                else:
+                    tag_nombre = f"{len(selected_records)}_Requisiciones"
+
                 st.download_button(
                     label=f"📩 Descargar Borrador de Correo de Autorización (.eml)",
                     data=eml_bytes,

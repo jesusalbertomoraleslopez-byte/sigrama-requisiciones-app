@@ -34,6 +34,18 @@ from config import (
 )
 
 
+def format_fecha_limite_esp(dias: int = 3) -> tuple:
+    """Calcula la fecha límite estimada y la formatea en español formal para Outlook."""
+    dias_semana_es = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+    meses_es = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+    
+    target_dt = datetime.datetime.now() + datetime.timedelta(days=int(dias))
+    dia_nombre = dias_semana_es[target_dt.weekday()]
+    mes_nombre = meses_es[target_dt.month - 1]
+    fecha_str = f"{dia_nombre}, {target_dt.day} de {mes_nombre} de {target_dt.year}"
+    return fecha_str, target_dt
+
+
 def build_requisition_eml(
     req_data: Dict[str, Any],
     cotizaciones_data: List[Dict[str, Any]],
@@ -42,23 +54,27 @@ def build_requisition_eml(
     cotizaciones_attachments: Optional[List[Dict[str, Any]]] = None,
     destinatario_to: Optional[Dict[str, str]] = None,
     destinatarios_cc: Optional[List[Dict[str, str]]] = None,
-    planta: str = "Planta Metales"
+    planta: str = "Planta Metales",
+    dias_autorizacion: int = 3,
+    plazo_po: str = "1 semana posterior a autorización"
 ) -> bytes:
     """
     Construye y compila un archivo .eml compatible con Outlook con el logotipo
-    oficial de SIGRAMA embebido inline y solicitud amable de autorización.
+    oficial de SIGRAMA embebido inline, solicitud amable de autorización,
+    asunto con SOL-XXXXX primero y marca de seguimiento para Outlook.
     """
     # Usar multipart/related como raíz para soporte nativo de imágenes inline (CID)
     msg = MIMEMultipart("related")
 
-    # 1. Asunto Normativo Estricto: 'REQ XXXXX - Descripción Breve - Fecha - Área'
+    # 1. Asunto Normativo Estricto: 'SOL-XXXXX - REQ-XXXXX - Descripción - Fecha - Área'
     req_id = req_data.get("id_requisicion", "REQ-00000")
-    sol_id = req_data.get("folio_solicitud", "")
+    sol_id = str(req_data.get("folio_solicitud", "") or "").strip()
     descripcion = req_data.get("descripcion_breve", "Suministro de Materiales")
     fecha = req_data.get("fecha_requisicion", datetime.date.today().strftime("%Y-%m-%d"))
     area = req_data.get("area_impacto", "Materiales")
 
-    subject_clean = f"{req_id} - {descripcion} - {fecha} - {area}"
+    sol_part = f"{sol_id} - " if sol_id else ""
+    subject_clean = f"{sol_part}{req_id} - {descripcion} - {fecha} - {area}"
     msg["Subject"] = subject_clean
 
     # 2. Destinatarios y Encabezados de Correo
@@ -81,6 +97,11 @@ def build_requisition_eml(
     msg["Message-ID"] = make_msgid(domain="sigrama.com.mx")
     msg["X-Priority"] = "1" if req_data.get("prioridad") == "Urgente" else "3"
     msg["X-Unsent"] = "1"  # Permite que Outlook lo abra directamente como borrador listo
+
+    # Encabezados de Seguimiento para Microsoft Outlook
+    fecha_limite_str, target_dt = format_fecha_limite_esp(dias_autorizacion)
+    msg["X-Message-Flag"] = "Seguimiento"
+    msg["Reply-By"] = formatdate(target_dt.timestamp(), localtime=True)
 
     # 3. Contenedor multipart/alternative para texto y HTML
     msg_alt = MIMEMultipart("alternative")
@@ -129,7 +150,11 @@ RESUMEN DE COTIZACIONES DE PROVEEDORES:
 
     plain_text += f"""
 
-Lic. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su amable visto bueno y autorización para la Requisición {req_id}, con el fin de poder continuar con el proceso y formalizar la correspondiente Orden de Compra (PO).
+PLAZOS DE SEGUIMIENTO Y COMPROMISO:
+- Visto Bueno / Autorización: {dias_autorizacion} días hábiles (Fecha límite estimada: {fecha_limite_str})
+- Emisión estimada de Orden de Compra (PO): {plazo_po}
+
+Lic. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su amable visto bueno y autorización para la Requisición {req_id} dentro de un plazo estimado de {dias_autorizacion} días hábiles (a más tardar el {fecha_limite_str}), con el fin de poder continuar con el proceso y formalizar la correspondiente Orden de Compra (PO) en un plazo de {plazo_po}.
 
 Adjunto encontrará el expediente original en PDF y las cotizaciones de los proveedores para su debida revisión.
 
@@ -289,13 +314,37 @@ Industria Sigrama S.A. de C.V.
                     </tbody>
                 </table>
 
+                <!-- CONTROL Y PLAZOS DE SEGUIMIENTO -->
+                <div style="background-color:#FFFBEB; border:1px solid #FDE68A; border-left:4px solid #D97706; border-radius:6px; padding:14px 18px; margin:20px 0;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td style="vertical-align:middle; width:28px;">
+                                <span style="font-size:20px;">🚩</span>
+                            </td>
+                            <td style="vertical-align:middle;">
+                                <div style="font-size:12.5px; font-weight:800; color:#92400E; text-transform:uppercase; letter-spacing:0.5px;">
+                                    Control y Plazos de Seguimiento
+                                </div>
+                                <div style="font-size:13px; color:#78350F; margin-top:5px; line-height:1.5;">
+                                    <span style="display:inline-block; margin-right:18px;">
+                                        <strong>• Visto Bueno / Autorización:</strong> <strong style="color:#B45309; background-color:#FEF3C7; padding:2px 7px; border-radius:4px; border:1px solid #FCD34D;">{dias_autorizacion} días hábiles</strong> ({fecha_limite_str})
+                                    </span>
+                                    <span style="display:inline-block;">
+                                        <strong>• Emisión estimada de PO:</strong> <strong style="color:#B45309; background-color:#FEF3C7; padding:2px 7px; border-radius:4px; border:1px solid #FCD34D;">{plazo_po}</strong>
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
                 <!-- CAJA DESTACADA DE SOLICITUD AMABLE DE VISTO BUENO -->
                 <div style="background-color:#F0FDF4; border:1px solid #BBF7D0; border-left:4px solid #10B981; border-radius:6px; padding:18px; margin:24px 0;">
                     <div style="font-weight:bold; font-size:14.5px; color:#166534;">
                         ✓ Solicitud de Visto Bueno y Autorización
                     </div>
                     <div style="font-size:13.5px; color:#15803D; margin-top:6px; line-height:1.5;">
-                        Lic. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su <strong>amable visto bueno y autorización</strong> para la <strong>Requisición {req_id}</strong>, con el fin de poder continuar con el proceso y formalizar la correspondiente Orden de Compra (PO).
+                        Lic. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su <strong>amable visto bueno y autorización</strong> para la <strong>Requisición {req_id}</strong> dentro del plazo estimado de <strong>{dias_autorizacion} días hábiles</strong> (a más tardar el <strong>{fecha_limite_str}</strong>), con el fin de poder continuar con el proceso y formalizar la correspondiente Orden de Compra (PO) en un plazo de <strong>{plazo_po}</strong>.
                     </div>
                 </div>
 
@@ -378,31 +427,41 @@ def build_consolidated_requisitions_eml(
     destinatario_to: Optional[Any] = None,
     destinatarios_cc: Optional[Any] = None,
     solicitante_remitente: Optional[str] = None,
-    planta: str = "Planta Metales"
+    planta: str = "Planta Metales",
+    dias_autorizacion: int = 3,
+    plazo_po: str = "1 semana posterior a autorización"
 ) -> bytes:
     """
     Construye y compila un archivo .eml consolidado para múltiples requisiciones seleccionadas
     con casillas de verificación, adjuntando los PDFs originales y cotizaciones correspondientes.
+    Incluye SOL-XXXXX primero en el asunto y plazos personalizados de seguimiento.
     """
     if not reqs_list:
         return b""
 
     msg = MIMEMultipart("related")
 
-    # 1. Asunto del Correo
+    # 1. Asunto del Correo con SOL-XXXXX al inicio
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     folios = [str(r.get("id_requisicion", "")).strip() for r in reqs_list if r.get("id_requisicion")]
+    sol_list = [str(r.get("folio_solicitud", "")).strip() for r in reqs_list if r.get("folio_solicitud")]
     
     if len(reqs_list) == 1:
         r0 = reqs_list[0]
         f0 = r0.get("id_requisicion", "REQ")
+        s0 = str(r0.get("folio_solicitud", "") or "").strip()
         d0 = r0.get("descripcion_breve", "Requisición de Compra")
         fe0 = r0.get("fecha_requisicion", today_str)
         a0 = r0.get("area_impacto", "Materiales")
-        subject = f"{f0} - {d0} - {fe0} - {a0}"
+        s0_str = f"{s0} - " if s0 else ""
+        subject = f"{s0_str}{f0} - {d0} - {fe0} - {a0}"
     else:
+        sol_preview = ", ".join(sol_list[:4]) + (f" (+{len(sol_list)-4} más)" if len(sol_list) > 4 else "")
         folios_preview = ", ".join(folios[:4]) + (f" (+{len(folios)-4} más)" if len(folios) > 4 else "")
-        subject = f"REQ {folios_preview} - Solicitud de Autorización ({len(reqs_list)} Requisiciones) - {today_str} - Industria SIGRAMA"
+        if sol_preview:
+            subject = f"{sol_preview} - REQ {folios_preview} - Solicitud de Autorización ({len(reqs_list)} Requisiciones) - {today_str} - Industria SIGRAMA"
+        else:
+            subject = f"REQ {folios_preview} - Solicitud de Autorización ({len(reqs_list)} Requisiciones) - {today_str} - Industria SIGRAMA"
 
     msg["Subject"] = subject
 
@@ -437,6 +496,11 @@ def build_consolidated_requisitions_eml(
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain="sigrama.com.mx")
     msg["X-Unsent"] = "1"
+
+    # Encabezados de Seguimiento para Microsoft Outlook
+    fecha_limite_str, target_dt = format_fecha_limite_esp(dias_autorizacion)
+    msg["X-Message-Flag"] = "Seguimiento"
+    msg["Reply-By"] = formatdate(target_dt.timestamp(), localtime=True)
 
     # 3. Contenedor multipart/alternative
     msg_alt = MIMEMultipart("alternative")
@@ -546,13 +610,37 @@ def build_consolidated_requisitions_eml(
                     </tfoot>
                 </table>
 
+                <!-- CONTROL Y PLAZOS DE SEGUIMIENTO -->
+                <div style="background-color:#FFFBEB; border:1px solid #FDE68A; border-left:4px solid #D97706; border-radius:6px; padding:14px 18px; margin:20px 0;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td style="vertical-align:middle; width:28px;">
+                                <span style="font-size:20px;">🚩</span>
+                            </td>
+                            <td style="vertical-align:middle;">
+                                <div style="font-size:12.5px; font-weight:800; color:#92400E; text-transform:uppercase; letter-spacing:0.5px;">
+                                    Control y Plazos de Seguimiento
+                                </div>
+                                <div style="font-size:13px; color:#78350F; margin-top:5px; line-height:1.5;">
+                                    <span style="display:inline-block; margin-right:18px;">
+                                        <strong>• Visto Bueno / Autorización:</strong> <strong style="color:#B45309; background-color:#FEF3C7; padding:2px 7px; border-radius:4px; border:1px solid #FCD34D;">{dias_autorizacion} días hábiles</strong> ({fecha_limite_str})
+                                    </span>
+                                    <span style="display:inline-block;">
+                                        <strong>• Emisión estimada de PO:</strong> <strong style="color:#B45309; background-color:#FEF3C7; padding:2px 7px; border-radius:4px; border:1px solid #FCD34D;">{plazo_po}</strong>
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
                 <!-- CAJA DESTACADA DE SOLICITUD AMABLE DE VISTO BUENO -->
                 <div style="background-color:#F0FDF4; border:1px solid #BBF7D0; border-left:4px solid #10B981; border-radius:6px; padding:18px; margin:22px 0;">
                     <div style="font-weight:bold; font-size:14.5px; color:#166534;">
                         ✓ Solicitud de Visto Bueno y Autorización
                     </div>
                     <div style="font-size:13.5px; color:#15803D; margin-top:6px; line-height:1.5;">
-                        Lic. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su <strong>amable visto bueno y autorización</strong> para estas <strong>{len(reqs_list)} requisiciones</strong>, con el fin de poder continuar con el proceso y formalizar la emisión de las correspondientes Órdenes de Compra (PO).
+                        Lic. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su <strong>amable visto bueno y autorización</strong> para estas <strong>{len(reqs_list)} requisiciones</strong> dentro del plazo estimado de <strong>{dias_autorizacion} días hábiles</strong> (a más tardar el <strong>{fecha_limite_str}</strong>), con el fin de poder continuar con el proceso y formalizar la emisión de las correspondientes Órdenes de Compra (PO) en un plazo estimado de <strong>{plazo_po}</strong>.
                     </div>
                 </div>
 

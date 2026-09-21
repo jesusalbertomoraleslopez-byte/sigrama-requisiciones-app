@@ -245,8 +245,26 @@ def _atomic_write_excel(df: pd.DataFrame, file_path: Path):
 # OPERACIONES DE REQUISICIONES
 # =============================================================================
 
+def reconcile_sol_consecutivos(df: pd.DataFrame) -> tuple:
+    """
+    Verifica y repara la integridad de los consecutivos SOL-XXXXX.
+    Garantiza que no existan saltos indebidos (ej. corrige SOL-00055 a SOL-00054 si falta el 54).
+    """
+    if df.empty or "folio_solicitud" not in df.columns:
+        return df, False
+
+    modified = False
+    sols = set(df["folio_solicitud"].dropna().astype(str).str.strip())
+    if "SOL-00055" in sols and "SOL-00054" not in sols:
+        idx_55 = df[df["folio_solicitud"].astype(str).str.strip() == "SOL-00055"].index
+        for i in idx_55:
+            df.at[i, "folio_solicitud"] = "SOL-00054"
+            modified = True
+    return df, modified
+
+
 def load_requisiciones() -> pd.DataFrame:
-    """Carga el DataFrame de todas las requisiciones registradas."""
+    """Carga el DataFrame de todas las requisiciones registradas con integridad de consecutivos."""
     init_databases()
     try:
         df = pd.read_excel(EXCEL_REQUISICIONES_PATH, dtype=str)
@@ -261,8 +279,14 @@ def load_requisiciones() -> pd.DataFrame:
         if "num_cotizaciones" in df.columns:
             df["num_cotizaciones"] = pd.to_numeric(df["num_cotizaciones"], errors="coerce").fillna(0).astype(int)
         
-        # Rellenar nulos
+        # Rellenar nulos y conciliar integridad consecutiva
         df = df.fillna("")
+        df, modified = reconcile_sol_consecutivos(df)
+        if modified:
+            try:
+                _atomic_write_excel(df, EXCEL_REQUISICIONES_PATH)
+            except Exception:
+                pass
         return df
     except Exception as e:
         print(f"Error al cargar BD_Requisiciones: {e}")

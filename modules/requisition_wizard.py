@@ -404,22 +404,43 @@ def render_requisition_wizard():
         for c in cotizaciones_captured if "file_bytes" in c
     ]
 
+    with st.expander("⏱️ Personalizar Plazos de Seguimiento (Autorización y PO)", expanded=False):
+        cw1, cw2 = st.columns(2)
+        with cw1:
+            wiz_dias_aut = st.number_input(
+                "🚩 Seguimiento Autorización (días):",
+                min_value=1,
+                max_value=30,
+                value=3,
+                step=1,
+                key="wiz_dias_aut"
+            )
+        with cw2:
+            wiz_plazo_po = st.text_input(
+                "⏱️ Plazo estimado para PO:",
+                value="1 semana posterior a autorización",
+                key="wiz_plazo_po"
+            )
+
     eml_bytes = build_requisition_eml(
         req_data=req_to_save,
         cotizaciones_data=cotizaciones_captured,
         pdf_requisicion_bytes=data_state.get("pdf_uploaded_bytes"),
         pdf_requisicion_name=f"requisicion_{norm_req_id}.pdf",
         cotizaciones_attachments=quote_attachments,
-        planta=st.session_state.get("app_planta_activa", "Planta Metales")
+        planta=st.session_state.get("app_planta_activa", "Planta Metales"),
+        dias_autorizacion=int(wiz_dias_aut),
+        plazo_po=wiz_plazo_po
     )
 
     col_btn_eml, col_btn_save = st.columns([1.5, 2])
 
     with col_btn_eml:
+        sol_prefix = f"{consecutivo_interno}_" if consecutivo_interno else ""
         st.download_button(
             label="📧 Descargar Correo (.eml) Listo",
             data=eml_bytes,
-            file_name=f"{norm_req_id}_Solicitud_Autorizacion.eml",
+            file_name=f"Autorizacion_{sol_prefix}{norm_req_id}.eml",
             mime="message/rfc822",
             help="Genera un correo RFC 822 compatible con Outlook o Thunderbird con los PDFs adjuntos incrustados.",
             use_container_width=True
