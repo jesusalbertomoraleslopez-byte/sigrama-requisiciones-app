@@ -33,9 +33,96 @@ from database import (
     load_requisiciones,
     load_cotizaciones,
     get_requisicion_by_id,
-    load_catalogos
+    load_catalogos,
+    update_requisicion_descripcion,
+    update_requisicion_detalles
 )
 from email_generator import build_consolidated_requisitions_eml
+
+
+@st.dialog("✏️ Modificar Descripción y Área de la Requisición")
+def modal_editar_descripcion(default_req_id: str = ""):
+    """Modal emergente para modificar la descripción breve y el área de impacto de cualquier requisición."""
+    df_reqs = load_requisiciones()
+    if df_reqs.empty:
+        st.warning("No hay requisiciones registradas en la base de datos.")
+        return
+
+    catalogos = load_catalogos()
+    areas_list = list(catalogos.get("areas_impacto", AREAS_IMPACTO_DEFAULT))
+
+    options = df_reqs["id_requisicion"].tolist()
+    labels = {}
+    for _, r in df_reqs.iterrows():
+        sol_tag = f"[{r.get('folio_solicitud', '')}] " if r.get("folio_solicitud") else ""
+        area_tag = f"({r.get('area_impacto', '')}) " if r.get("area_impacto") else ""
+        desc_preview = (str(r.get("descripcion_breve") or "")).strip()[:38]
+        labels[r["id_requisicion"]] = f"{sol_tag}{r['id_requisicion']} — {area_tag}{desc_preview}"
+
+    idx_default = 0
+    if default_req_id and default_req_id in options:
+        idx_default = options.index(default_req_id)
+
+    selected_id = st.selectbox(
+        "Requisición a Modificar:",
+        options=options,
+        index=idx_default,
+        format_func=lambda x: labels.get(x, x),
+        key="modal_edit_sel_req_id"
+    )
+
+    rec = df_reqs[df_reqs["id_requisicion"] == selected_id].iloc[0]
+
+    col_info1, col_info2 = st.columns(2)
+    with col_info1:
+        st.markdown(f"**Consecutivo Interno:** `{rec.get('folio_solicitud', 'N/A')}`")
+        st.markdown(f"**Folio Oficial:** `{rec['id_requisicion']}`")
+    with col_info2:
+        st.markdown(f"**Solicitante:** {rec.get('solicitante', 'N/A')}")
+        st.markdown(f"**Estatus:** {rec.get('estatus', 'N/A')}")
+
+    # Selector de Área de Impacto
+    cur_area = rec.get("area_impacto", "")
+    area_opts = list(areas_list)
+    if cur_area and cur_area not in area_opts:
+        area_opts.append(cur_area)
+    idx_area = area_opts.index(cur_area) if cur_area in area_opts else 0
+
+    col_m1, col_m2 = st.columns([1.1, 2.3])
+    with col_m1:
+        new_area = st.selectbox(
+            "Área de Impacto:",
+            options=area_opts,
+            index=idx_area,
+            key=f"modal_sel_area_{selected_id}",
+            help="Selecciona el área de impacto correspondiente para clasificar y entender mejor la solicitud."
+        )
+    with col_m2:
+        current_desc = str(rec.get("descripcion_breve", "") or "")
+        new_desc = st.text_area(
+            "Descripción de la Solicitud:",
+            value=current_desc,
+            height=90,
+            help="Escribe la descripción actualizada para esta requisición.",
+            key=f"modal_txt_desc_{selected_id}"
+        )
+
+    col_btn1, col_btn2 = st.columns([1.2, 1])
+    with col_btn1:
+        if st.button("💾 Guardar Cambios", type="primary", use_container_width=True, key="modal_btn_save_desc"):
+            if not new_desc.strip():
+                st.error("La descripción no puede estar vacía.")
+            else:
+                success = update_requisicion_detalles(selected_id, nueva_descripcion=new_desc, nueva_area=new_area)
+                if success:
+                    st.toast(f"✅ Requisición {rec.get('folio_solicitud') or selected_id} actualizada", icon="✅")
+                    st.success("✅ Descripción y Área guardadas exitosamente en la base de datos.")
+                    st.rerun()
+                else:
+                    st.error("Ocurrió un error al actualizar el registro.")
+    with col_btn2:
+        if st.button("Cerrar", use_container_width=True, key="modal_btn_cancel_desc"):
+            st.rerun()
 
 
 def render_dashboard():
@@ -162,7 +249,12 @@ def render_dashboard():
     # VISTA 1: LISTA ESTILO ODOO (LIST VIEW CON ODOO BADGES Y AGRUPACIÓN)
     # =========================================================================
     if view_mode == "📋 Lista Odoo":
-        st.markdown(f"##### 📋 Listado Oficial de Requisiciones ({len(df_filtered)})")
+        col_list_title, col_btn_modal = st.columns([2.7, 1.3])
+        with col_list_title:
+            st.markdown(f"##### 📋 Listado Oficial de Requisiciones ({len(df_filtered)})")
+        with col_btn_modal:
+            if st.button("✏️ Modificar Descripción y Área", key="btn_open_modal_edit_desc", use_container_width=True, help="Modifica la descripción técnica o el área de impacto de cualquier requisición"):
+                modal_editar_descripcion()
 
         if df_filtered.empty:
             st.info("No hay requisiciones que coincidan con los filtros seleccionados.")
@@ -383,6 +475,88 @@ def render_dashboard():
             # Eliminar duplicados preservando orden
             unique_folios = list(dict.fromkeys(selected_folios))
             selected_records = [df_reqs[df_reqs["id_requisicion"] == f].iloc[0].to_dict() for f in unique_folios if not df_reqs[df_reqs["id_requisicion"] == f].empty]
+
+            # Sincronizar automáticamente con el expediente digital inferior
+            if unique_folios:
+                st.session_state["selected_dossier_id"] = unique_folios[0]
+
+            # -----------------------------------------------------------------
+            # PANEL DE ACCIÓN RÁPIDA: MODIFICAR DESCRIPCIÓN Y ÁREA
+            # -----------------------------------------------------------------
+            with st.expander(f"✏️ Modificar Descripción y Área de la Solicitud ({len(unique_folios)} marcada(s))", expanded=True):
+                if len(unique_folios) == 1:
+                    target_rec = selected_records[0]
+                    t_id = target_rec["id_requisicion"]
+                    t_sol = target_rec.get("folio_solicitud", "")
+                    t_desc = str(target_rec.get("descripcion_breve", "") or "")
+                    cur_area = target_rec.get("area_impacto", "")
+
+                    area_opts = list(areas_list)
+                    if cur_area and cur_area not in area_opts:
+                        area_opts.append(cur_area)
+                    idx_area = area_opts.index(cur_area) if cur_area in area_opts else 0
+
+                    st.markdown(f"**Requisición:** `{t_sol}` / `{t_id}` &bull; **Solicitante:** {target_rec.get('solicitante', '')}")
+                    c_ar, c_desc = st.columns([1.1, 2.3])
+                    with c_ar:
+                        new_area_input = st.selectbox(
+                            "Área de Impacto:",
+                            options=area_opts,
+                            index=idx_area,
+                            key=f"quick_edit_area_{t_id}",
+                            help="Cambia el área para mejorar la clasificación y el entendimiento de la requisición."
+                        )
+                    with c_desc:
+                        new_desc_input = st.text_area(
+                            "Descripción técnica / comercial:",
+                            value=t_desc,
+                            height=80,
+                            key=f"quick_edit_desc_{t_id}"
+                        )
+                    if st.button("💾 Guardar Cambios (Descripción y Área)", key=f"btn_save_desc_quick_{t_id}", type="primary", use_container_width=True):
+                        if update_requisicion_detalles(t_id, nueva_descripcion=new_desc_input, nueva_area=new_area_input):
+                            st.toast(f"✅ Requisición {t_sol or t_id} actualizada", icon="✅")
+                            st.success(f"✅ Descripción y Área de {t_sol or t_id} guardadas exitosamente.")
+                            st.rerun()
+                else:
+                    target_id = st.selectbox(
+                        "Selecciona la requisición cuya descripción y área deseas editar:",
+                        options=unique_folios,
+                        format_func=lambda x: f"[{next((r.get('folio_solicitud','') for r in selected_records if r['id_requisicion'] == x), '')}] {x} — ({next((r.get('area_impacto','') for r in selected_records if r['id_requisicion'] == x), '')}) {str(next((r.get('descripcion_breve','') for r in selected_records if r['id_requisicion'] == x), ''))[:40]}",
+                        key="sel_target_edit_multi"
+                    )
+                    target_rec = next(r for r in selected_records if r["id_requisicion"] == target_id)
+                    t_sol = target_rec.get("folio_solicitud", "")
+                    t_desc = str(target_rec.get("descripcion_breve", "") or "")
+                    cur_area = target_rec.get("area_impacto", "")
+
+                    area_opts = list(areas_list)
+                    if cur_area and cur_area not in area_opts:
+                        area_opts.append(cur_area)
+                    idx_area = area_opts.index(cur_area) if cur_area in area_opts else 0
+
+                    st.markdown(f"**Requisición:** `{t_sol}` / `{target_id}` &bull; **Solicitante:** {target_rec.get('solicitante', '')}")
+                    c_ar, c_desc = st.columns([1.1, 2.3])
+                    with c_ar:
+                        new_area_input = st.selectbox(
+                            "Área de Impacto:",
+                            options=area_opts,
+                            index=idx_area,
+                            key=f"quick_edit_area_{target_id}",
+                            help="Cambia el área para mejorar la clasificación y el entendimiento de la requisición."
+                        )
+                    with c_desc:
+                        new_desc_input = st.text_area(
+                            "Descripción técnica / comercial:",
+                            value=t_desc,
+                            height=80,
+                            key=f"quick_edit_desc_{target_id}"
+                        )
+                    if st.button("💾 Guardar Cambios (Descripción y Área)", key=f"btn_save_desc_quick_{target_id}", type="primary", use_container_width=True):
+                        if update_requisicion_detalles(target_id, nueva_descripcion=new_desc_input, nueva_area=new_area_input):
+                            st.toast(f"✅ Requisición {t_sol or target_id} actualizada", icon="✅")
+                            st.success(f"✅ Descripción y Área de {t_sol or target_id} guardadas exitosamente.")
+                            st.rerun()
             
             total_est_sel = sum(float(r.get("monto_estimado", 0.0) or 0.0) for r in selected_records)
             folios_str = ", ".join(unique_folios)
@@ -630,6 +804,35 @@ def render_dashboard():
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+            with st.expander(f"✏️ Modificar Descripción y Área de este Expediente ({dossier_id})"):
+                cur_exp_area = req_info.get("area_impacto", "")
+                area_opts = list(areas_list)
+                if cur_exp_area and cur_exp_area not in area_opts:
+                    area_opts.append(cur_exp_area)
+                idx_exp_area = area_opts.index(cur_exp_area) if cur_exp_area in area_opts else 0
+
+                c_de_a, c_de_d = st.columns([1.1, 2.3])
+                with c_de_a:
+                    new_exp_area = st.selectbox(
+                        "Área de Impacto:",
+                        options=area_opts,
+                        index=idx_exp_area,
+                        key=f"exp_edit_area_{dossier_id}",
+                        help="Cambia el área para mejorar la clasificación y seguimiento de la requisición."
+                    )
+                with c_de_d:
+                    new_exp_desc = st.text_area(
+                        "Descripción de la Solicitud:",
+                        value=str(req_info.get("descripcion_breve", "") or ""),
+                        height=75,
+                        key=f"exp_edit_desc_{dossier_id}"
+                    )
+                if st.button("💾 Guardar Cambios (Descripción y Área)", key=f"btn_exp_save_desc_{dossier_id}", type="primary", use_container_width=True):
+                    if update_requisicion_detalles(dossier_id, nueva_descripcion=new_exp_desc, nueva_area=new_exp_area):
+                        st.toast(f"✅ Requisición {dossier_id} actualizada", icon="✅")
+                        st.success("✅ Descripción y Área guardadas exitosamente.")
+                        st.rerun()
 
             # Localizar carpeta física de la requisición
             req_dir = get_req_directory(dossier_id)
