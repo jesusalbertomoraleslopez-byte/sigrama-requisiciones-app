@@ -400,7 +400,8 @@ def render_requisition_wizard():
         cotizaciones_data=cotizaciones_captured,
         pdf_requisicion_bytes=data_state.get("pdf_uploaded_bytes"),
         pdf_requisicion_name=f"requisicion_{norm_req_id}.pdf",
-        cotizaciones_attachments=quote_attachments
+        cotizaciones_attachments=quote_attachments,
+        planta=st.session_state.get("app_planta_activa", "Planta Metales")
     )
 
     col_btn_eml, col_btn_save = st.columns([1.5, 2])

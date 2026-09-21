@@ -421,6 +421,15 @@ def main():
 
         st.markdown("<hr style='border-color:#27272A;'>", unsafe_allow_html=True)
 
+        planta_activa = st.selectbox(
+            "🏭 Planta:",
+            options=["Planta Metales", "Planta Juan Escutia"],
+            index=0,
+            key="app_planta_activa"
+        )
+
+        st.markdown("<hr style='border-color:#27272A;'>", unsafe_allow_html=True)
+
         # Indicador de Auditoría y Cumplimiento
         st.markdown("""
         <div style="background-color:#18181B; border:1px solid #27272A; border-radius:6px; padding:12px; font-size:11px; color:#94A3B8;">
@@ -454,7 +463,7 @@ def main():
         '<div style="font-size:19px; font-weight:900; color:#111111; letter-spacing:0.5px; font-family:\'Montserrat\', sans-serif;">INDUSTRIA SIGRAMA S.A. DE C.V.</div>'
         '<div style="font-size:12px; color:#64748B; font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-top:2px;">Módulo Central de Control y Seguimiento de Requisiciones de Compra</div>'
         '</div>'
-        f'<div style="display:flex; align-items:center;">{user_header_badge}<span style="background-color:#FEF2F2; color:#DC2626; border:1px solid #FECACA; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:800; letter-spacing:0.5px; font-family:\'Montserrat\', sans-serif;">PLANTA JUAN ESCUTIA</span></div>'
+        f'<div style="display:flex; align-items:center;">{user_header_badge}<span style="background-color:#FEF2F2; color:#DC2626; border:1px solid #FECACA; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:800; letter-spacing:0.5px; font-family:\'Montserrat\', sans-serif;">{planta_activa.upper()}</span></div>'
         '</div>'
     )
     st.markdown(header_html, unsafe_allow_html=True)

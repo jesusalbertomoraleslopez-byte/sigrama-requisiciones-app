@@ -401,15 +401,25 @@ def render_dashboard():
                 with cf2:
                     eml_cc = st.text_input("Con copia (Cc):", value="Bryan Alejandro Flores Mancinas <bryan.mancinas@sigrama.com.mx>; Cruz Eduardo Carreon Rios <cruz.carreon@sigrama.com.mx>; jose.fernandez@sigrama.com.mx; Luis Alfredo Quintana Palma <luis.quintana@sigrama.com.mx>; Jesus Alberto Morales Lopez <jesus.morales@sigrama.com.mx>", key="eml_cc_batch")
 
-                usuario_actual_firma = st.session_state.get("usuario") or "Jesús Alberto Morales López"
-                eml_firma = st.text_input("Firma Solicitante:", value=usuario_actual_firma, key="eml_firma_batch")
+                cf3, cf4 = st.columns(2)
+                with cf3:
+                    usuario_actual_firma = st.session_state.get("usuario") or "Jesús Alberto Morales López"
+                    eml_firma = st.text_input("Firma Solicitante:", value=usuario_actual_firma, key="eml_firma_batch")
+                with cf4:
+                    eml_planta = st.selectbox(
+                        "🏭 Planta:",
+                        options=["Planta Metales", "Planta Juan Escutia"],
+                        index=0,
+                        key="eml_planta_batch"
+                    )
 
                 # Generar archivo .eml consolidado en memoria
                 eml_bytes = build_consolidated_requisitions_eml(
                     selected_records,
                     destinatario_to=eml_to,
                     destinatarios_cc=eml_cc,
-                    solicitante_remitente=eml_firma
+                    solicitante_remitente=eml_firma,
+                    planta=eml_planta
                 )
 
                 tag_nombre = f"{len(selected_records)}_Requisiciones" if len(selected_records) > 1 else selected_records[0]["id_requisicion"]

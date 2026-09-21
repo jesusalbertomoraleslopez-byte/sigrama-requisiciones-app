@@ -41,7 +41,8 @@ def build_requisition_eml(
     pdf_requisicion_name: str = "requisicion_original.pdf",
     cotizaciones_attachments: Optional[List[Dict[str, Any]]] = None,
     destinatario_to: Optional[Dict[str, str]] = None,
-    destinatarios_cc: Optional[List[Dict[str, str]]] = None
+    destinatarios_cc: Optional[List[Dict[str, str]]] = None,
+    planta: str = "Planta Metales"
 ) -> bytes:
     """
     Construye y compila un archivo .eml compatible con Outlook con el logotipo
@@ -192,6 +193,9 @@ Industria Sigrama S.A. de C.V.
                             <div style="font-size:11px; color:#64748B; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Control de Requisiciones</div>
                             <div style="display:inline-block; background-color:#0F172A; color:#FFFFFF; padding:5px 12px; border-radius:6px; font-weight:bold; font-size:14px; margin-top:4px; letter-spacing:0.5px;">
                                 {req_id}
+                            </div>
+                            <div style="font-size:11px; color:#64748B; margin-top:3px; font-weight:600;">
+                                {planta}
                             </div>
                         </td>
                     </tr>
@@ -365,7 +369,8 @@ def build_consolidated_requisitions_eml(
     reqs_list: List[Dict[str, Any]],
     destinatario_to: Optional[Any] = None,
     destinatarios_cc: Optional[Any] = None,
-    solicitante_remitente: Optional[str] = None
+    solicitante_remitente: Optional[str] = None,
+    planta: str = "Planta Metales"
 ) -> bytes:
     """
     Construye y compila un archivo .eml consolidado para múltiples requisiciones seleccionadas
@@ -479,7 +484,7 @@ def build_consolidated_requisitions_eml(
                                 Control y Seguimiento de Requisiciones de Compra
                             </div>
                             <div style="font-size:11px; color:#64748B; margin-top:2px;">
-                                Fecha de Emisión: <strong>{today_str}</strong> &bull; Planta Juan Escutia
+                                Fecha de Emisión: <strong>{today_str}</strong> &bull; {planta}
                             </div>
                         </td>
                     </tr>

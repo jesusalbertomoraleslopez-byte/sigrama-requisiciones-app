@@ -195,7 +195,7 @@ def render_po_control():
     po_notas_input = st.text_area(
         "Notas de Auditoría / Justificación Fiscal (SAT / Corporativo):",
         value="",
-        placeholder="Ej. Autorizado con visto bueno de Dirección General. Entrega pactada en planta Juan Escutia.",
+        placeholder="Ej. Autorizado con visto bueno de Dirección General. Entrega pactada en Planta Metales.",
         height=70
     )
 
