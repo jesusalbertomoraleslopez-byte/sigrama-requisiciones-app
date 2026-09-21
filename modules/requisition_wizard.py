@@ -420,12 +420,14 @@ def render_requisition_wizard():
                 key="wiz_plazo_po"
             )
 
+    remitente_usuario = st.session_state.get("usuario") or solicitante_input
     eml_bytes = build_requisition_eml(
         req_data=req_to_save,
         cotizaciones_data=cotizaciones_captured,
         pdf_requisicion_bytes=data_state.get("pdf_uploaded_bytes"),
         pdf_requisicion_name=f"requisicion_{norm_req_id}.pdf",
         cotizaciones_attachments=quote_attachments,
+        remitente_from=remitente_usuario,
         planta=st.session_state.get("app_planta_activa", "Planta Metales"),
         dias_autorizacion=int(wiz_dias_aut),
         plazo_po=wiz_plazo_po

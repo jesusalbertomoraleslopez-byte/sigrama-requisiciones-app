@@ -12,6 +12,7 @@ Generador Dinámico de Correos Electrónicos (.eml) Estándar RFC 822
 
 import os
 import io
+import re
 import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -30,8 +31,54 @@ from config import (
     LOGO_SIGRAMA_PATH,
     DESTINATARIO_PRINCIPAL_DEFAULT,
     DESTINATARIOS_CC_DEFAULT,
+    DIRECTORES_DEFAULT,
     get_req_directory
 )
+
+
+def get_user_email(user_name: Optional[str]) -> str:
+    """Obtiene el correo institucional @sigrama.com.mx correspondiente a la persona que descarga o solicita."""
+    if not user_name:
+        return "jesus.morales@sigrama.com.mx"
+
+    u_str = str(user_name).strip()
+    match = re.search(r'[\w\.-]+@[\w\.-]+', u_str)
+    if match:
+        return match.group(0)
+
+    u_lower = u_str.lower()
+    for person in DIRECTORES_DEFAULT:
+        p_name = person["nombre"].lower()
+        parts = [p for p in p_name.split() if len(p) > 3]
+        if any(part in u_lower for part in parts):
+            return person["correo"]
+
+    if "morales" in u_lower or "jesus" in u_lower or "admin" in u_lower:
+        return "jesus.morales@sigrama.com.mx"
+    elif "bryan" in u_lower or "mancinas" in u_lower or "flores" in u_lower:
+        return "bryan.mancinas@sigrama.com.mx"
+    elif "cruz" in u_lower or "carreon" in u_lower:
+        return "cruz.carreon@sigrama.com.mx"
+    elif "fernandez" in u_lower or "jose" in u_lower:
+        return "jose.fernandez@sigrama.com.mx"
+    elif "quintana" in u_lower or "luis" in u_lower:
+        return "luis.quintana@sigrama.com.mx"
+
+    return "jesus.morales@sigrama.com.mx"
+
+
+def format_from_header(remitente: Optional[str]) -> str:
+    """Construye el encabezado 'From: Nombre <correo@sigrama.com.mx>' con la cuenta corporativa real."""
+    rem_target = str(remitente or "").strip()
+    if not rem_target:
+        rem_target = "Jesus Alberto Morales Lopez"
+
+    if "<" in rem_target and ">" in rem_target:
+        return rem_target
+
+    clean_name = rem_target.split("(")[0].strip()
+    email = get_user_email(rem_target)
+    return f"{clean_name} <{email}>"
 
 
 def format_fecha_limite_esp(dias: int = 3) -> tuple:
@@ -54,6 +101,7 @@ def build_requisition_eml(
     cotizaciones_attachments: Optional[List[Dict[str, Any]]] = None,
     destinatario_to: Optional[Dict[str, str]] = None,
     destinatarios_cc: Optional[List[Dict[str, str]]] = None,
+    remitente_from: Optional[str] = None,
     planta: str = "Planta Metales",
     dias_autorizacion: int = 3,
     plazo_po: str = "1 semana posterior a autorización"
@@ -91,8 +139,8 @@ def build_requisition_eml(
             cc_strings.append(c["correo"])
     msg["Cc"] = "; ".join(cc_strings)
 
-    solicitante = req_data.get("solicitante", "Ing. Jesús Alberto Morales")
-    msg["From"] = "sistema.requisiciones@sigrama.com.mx"
+    solicitante = req_data.get("solicitante", "Jesus Alberto Morales Lopez")
+    msg["From"] = format_from_header(remitente_from or solicitante)
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain="sigrama.com.mx")
     msg["X-Priority"] = "1" if req_data.get("prioridad") == "Urgente" else "3"
@@ -427,6 +475,7 @@ def build_consolidated_requisitions_eml(
     destinatario_to: Optional[Any] = None,
     destinatarios_cc: Optional[Any] = None,
     solicitante_remitente: Optional[str] = None,
+    remitente_from: Optional[str] = None,
     planta: str = "Planta Metales",
     dias_autorizacion: int = 3,
     plazo_po: str = "1 semana posterior a autorización"
@@ -492,7 +541,7 @@ def build_consolidated_requisitions_eml(
         cc_header = "; ".join([f"{c['nombre']} <{c['correo']}>" for c in DESTINATARIOS_CC_DEFAULT])
 
     msg["Cc"] = cc_header
-    msg["From"] = "sistema.requisiciones@sigrama.com.mx"
+    msg["From"] = format_from_header(remitente_from or solicitante_remitente)
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain="sigrama.com.mx")
     msg["X-Unsent"] = "1"

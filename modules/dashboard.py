@@ -37,7 +37,10 @@ from database import (
     update_requisicion_descripcion,
     update_requisicion_detalles
 )
-from email_generator import build_consolidated_requisitions_eml
+from email_generator import (
+    build_consolidated_requisitions_eml,
+    get_user_email
+)
 
 
 @st.dialog("✏️ Modificar Descripción y Área de la Requisición")
@@ -598,16 +601,23 @@ def render_dashboard():
                 """, unsafe_allow_html=True)
 
             with col_acc_right:
-                cf1, cf2 = st.columns(2)
+                usuario_actual_firma = st.session_state.get("usuario") or "Jesús Alberto Morales López"
+                correo_remitente_auto = get_user_email(usuario_actual_firma)
+                de_default = f"{usuario_actual_firma} <{correo_remitente_auto}>"
+
+                cf0, cf1 = st.columns(2)
+                with cf0:
+                    eml_from = st.text_input("De (Remitente que descarga):", value=de_default, key="eml_from_batch", help="Cuenta corporativa de la persona que descarga y envía el correo desde Outlook.")
                 with cf1:
                     eml_to = st.text_input("Para (Destinatario):", value="Ing. Lorena Hernandez <lhernandez@sigrama.com.mx>", key="eml_to_batch")
+
+                cf2, cf3 = st.columns(2)
                 with cf2:
                     eml_cc = st.text_input("Con copia (Cc):", value="Bryan Alejandro Flores Mancinas <bryan.mancinas@sigrama.com.mx>; Cruz Eduardo Carreon Rios <cruz.carreon@sigrama.com.mx>; jose.fernandez@sigrama.com.mx; Luis Alfredo Quintana Palma <luis.quintana@sigrama.com.mx>; Jesus Alberto Morales Lopez <jesus.morales@sigrama.com.mx>", key="eml_cc_batch")
-
-                cf3, cf4 = st.columns(2)
                 with cf3:
-                    usuario_actual_firma = st.session_state.get("usuario") or "Jesús Alberto Morales López"
                     eml_firma = st.text_input("Firma Solicitante:", value=usuario_actual_firma, key="eml_firma_batch")
+
+                cf4, cf5, cf6 = st.columns([1.1, 0.9, 1.2])
                 with cf4:
                     eml_planta = st.selectbox(
                         "🏭 Planta:",
@@ -615,11 +625,9 @@ def render_dashboard():
                         index=0,
                         key="eml_planta_batch"
                     )
-
-                cf5, cf6 = st.columns(2)
                 with cf5:
                     eml_dias_aut = st.number_input(
-                        "🚩 Seguimiento Autorización (días):",
+                        "🚩 Días Aut.:",
                         min_value=1,
                         max_value=30,
                         value=3,
@@ -629,7 +637,7 @@ def render_dashboard():
                     )
                 with cf6:
                     eml_plazo_po = st.text_input(
-                        "⏱️ Plazo estimado para PO:",
+                        "⏱️ Plazo PO:",
                         value="1 semana posterior a autorización",
                         help="Compromiso formal para emitir la Orden de Compra tras recibir el visto bueno.",
                         key="eml_plazo_po_batch"
@@ -641,6 +649,7 @@ def render_dashboard():
                     destinatario_to=eml_to,
                     destinatarios_cc=eml_cc,
                     solicitante_remitente=eml_firma,
+                    remitente_from=eml_from,
                     planta=eml_planta,
                     dias_autorizacion=int(eml_dias_aut),
                     plazo_po=eml_plazo_po
