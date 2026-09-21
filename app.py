@@ -443,7 +443,7 @@ def main():
 
         st.markdown("""
         <div style="margin-top:20px; text-align:center; font-size:10px; color:#64748B;">
-            v2.6.0 &bull; Industria Sigrama S.A. de C.V.<br>
+            v2.7.0 &bull; Industria Sigrama S.A. de C.V.<br>
             Planta Metalmecánica &bull; México
         </div>
         """, unsafe_allow_html=True)
