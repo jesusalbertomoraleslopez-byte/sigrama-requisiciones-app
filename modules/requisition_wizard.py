@@ -344,9 +344,11 @@ def render_requisition_wizard():
     st.markdown("#### 3. Generación Instantánea de Correo (.eml) y Registro")
 
     norm_req_id = normalize_req_id(req_id_input)
-    # Estructura estricta del asunto: 'REQ XXXXX - Descripción Breve - Fecha - Área'
+    # Estructura estricta del asunto: 'SOL-XXXXX - REQ-XXXXX - Descripción Breve - Fecha - Área'
     fecha_str = fecha_input.strftime("%Y-%m-%d")
-    strict_subject = f"{norm_req_id} - {descripcion_input} - {fecha_str} - {area_input}"
+    cur_sol = sol_id_input.strip() if 'sol_id_input' in locals() and sol_id_input.strip() else next_sol
+    sol_prefix_subj = f"{cur_sol} - " if cur_sol else ""
+    strict_subject = f"{sol_prefix_subj}{norm_req_id} - {descripcion_input} - {fecha_str} - {area_input}"
 
     st.markdown(f"""
     <div style="background-color:#F8FAFC; border:1px solid #CBD5E1; border-radius:6px; padding:14px; margin-bottom:16px;">
@@ -364,39 +366,29 @@ def render_requisition_wizard():
     # Preparar diccionario para guardado y generación
     req_to_save = {
         "id_requisicion": norm_req_id,
-        "folio_solicitud": sol_id_input.strip() if 'sol_id_input' in locals() and sol_id_input.strip() else next_sol,
+        "folio_solicitud": cur_sol,
         "fecha_requisicion": fecha_str,
         "solicitante": solicitante_input,
         "area_impacto": area_input,
         "descripcion_breve": descripcion_input,
         "justificacion": justificacion_input,
         "prioridad": prioridad_input,
-        "estatus": ESTATUS_PENDIENTE_AUTORIZACION if cotizaciones_captured else ESTATUS_ESPERA_COTIZACION,
+        "estatus": ESTATUS_PENDIENTE_AUTORIZACION if any(c.get("seleccionada") == "Sí" for c in cotizaciones_captured) else ESTATUS_ESPERA_COTIZACION,
         "proveedor_seleccionado": "",
-        "monto_estimado": monto_est_input,
+        "monto_estimado": 0.0,
         "moneda": "MXN",
         "num_cotizaciones": len(cotizaciones_captured),
-        "folio_po": "",
-        "fecha_po": "",
-        "monto_po": 0.0,
-        "proveedor_po": "",
-        "fecha_autorizacion": "",
-        "autorizado_por": "",
         "archivo_requisicion_pdf": f"requisicion_{norm_req_id}.pdf" if data_state.get("pdf_uploaded_bytes") else "",
-        "archivo_eml": f"{norm_req_id}_Solicitud_Autorizacion.eml",
-        "archivo_po": "",
-        "notas_auditoria": f"Registrado el {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}. Flujo inicial completado.",
-        "fecha_registro": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "ultima_modificacion": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "archivo_eml": f"Autorizacion_{cur_sol}_{norm_req_id}.eml" if cur_sol else f"{norm_req_id}_Solicitud_Autorizacion.eml",
+        "notas_auditoria": f"Registrado desde Asistente Web el {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}."
     }
 
-    # Si hay cotización seleccionada, asignar proveedor y monto a la requisición
+    # Asignar proveedor seleccionado si hay cotización marcada
     for cot in cotizaciones_captured:
         if cot["seleccionada"] == "Sí":
             req_to_save["proveedor_seleccionado"] = cot["proveedor"]
             req_to_save["monto_estimado"] = cot["monto"]
             req_to_save["moneda"] = cot["moneda"]
-            break
 
     # Preparar adjuntos para el correo .eml
     quote_attachments = [
@@ -436,7 +428,7 @@ def render_requisition_wizard():
     col_btn_eml, col_btn_save = st.columns([1.5, 2])
 
     with col_btn_eml:
-        sol_prefix = f"{consecutivo_interno}_" if consecutivo_interno else ""
+        sol_prefix = f"{cur_sol}_" if cur_sol else ""
         st.download_button(
             label="📧 Descargar Correo (.eml) Listo",
             data=eml_bytes,
