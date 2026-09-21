@@ -29,7 +29,8 @@ from config import (
     COLOR_SECONDARY,
     LOGO_SIGRAMA_PATH,
     DESTINATARIO_PRINCIPAL_DEFAULT,
-    DESTINATARIOS_CC_DEFAULT
+    DESTINATARIOS_CC_DEFAULT,
+    get_req_directory
 )
 
 
@@ -358,3 +359,256 @@ Industria Sigrama S.A. de C.V.
                 msg.attach(part_cot)
 
     return msg.as_bytes()
+
+
+def build_consolidated_requisitions_eml(
+    reqs_list: List[Dict[str, Any]],
+    destinatario_to: Optional[Any] = None,
+    destinatarios_cc: Optional[Any] = None,
+    solicitante_remitente: Optional[str] = None
+) -> bytes:
+    """
+    Construye y compila un archivo .eml consolidado para múltiples requisiciones seleccionadas
+    con casillas de verificación, adjuntando los PDFs originales y cotizaciones correspondientes.
+    """
+    if not reqs_list:
+        return b""
+
+    msg = MIMEMultipart("related")
+
+    # 1. Asunto del Correo
+    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    folios = [str(r.get("id_requisicion", "")).strip() for r in reqs_list if r.get("id_requisicion")]
+    
+    if len(reqs_list) == 1:
+        r0 = reqs_list[0]
+        f0 = r0.get("id_requisicion", "REQ")
+        d0 = r0.get("descripcion_breve", "Requisición de Compra")
+        fe0 = r0.get("fecha_requisicion", today_str)
+        a0 = r0.get("area_impacto", "Materiales")
+        subject = f"{f0} - {d0} - {fe0} - {a0}"
+    else:
+        folios_preview = ", ".join(folios[:4]) + (f" (+{len(folios)-4} más)" if len(folios) > 4 else "")
+        subject = f"REQ {folios_preview} - Solicitud de Autorización ({len(reqs_list)} Requisiciones) - {today_str} - Industria SIGRAMA"
+
+    msg["Subject"] = subject
+
+    # 2. Destinatarios To y Cc
+    if isinstance(destinatario_to, str) and destinatario_to.strip():
+        to_header = destinatario_to.strip()
+    elif isinstance(destinatario_to, dict):
+        to_header = f"{destinatario_to.get('nombre', '')} <{destinatario_to.get('correo', '')}>".strip()
+    else:
+        to_header = f"{DESTINATARIO_PRINCIPAL_DEFAULT['nombre']} <{DESTINATARIO_PRINCIPAL_DEFAULT['correo']}>"
+
+    msg["To"] = to_header
+
+    if isinstance(destinatarios_cc, str) and destinatarios_cc.strip():
+        cc_header = destinatarios_cc.strip()
+    elif isinstance(destinatarios_cc, list):
+        cc_parts = []
+        for c in destinatarios_cc:
+            if isinstance(c, dict):
+                if c.get("nombre") and c.get("nombre") != c.get("correo"):
+                    cc_parts.append(f"{c['nombre']} <{c['correo']}>")
+                else:
+                    cc_parts.append(c.get("correo", ""))
+            elif isinstance(c, str):
+                cc_parts.append(c)
+        cc_header = "; ".join(cc_parts)
+    else:
+        cc_header = "; ".join([f"{c['nombre']} <{c['correo']}>" for c in DESTINATARIOS_CC_DEFAULT])
+
+    msg["Cc"] = cc_header
+    msg["From"] = "sistema.requisiciones@sigrama.com.mx"
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain="sigrama.com.mx")
+    msg["X-Unsent"] = "1"
+
+    # 3. Contenedor multipart/alternative
+    msg_alt = MIMEMultipart("alternative")
+    msg.attach(msg_alt)
+
+    # 4. Construcción de Tabla Consolidada
+    rows_html = []
+    total_monto = 0.0
+    for idx, r in enumerate(reqs_list, 1):
+        monto_val = float(r.get("monto_estimado", 0.0) or 0.0)
+        total_monto += monto_val
+        cot_num = int(r.get("num_cotizaciones", 0) or 0)
+        solic = str(r.get("solicitante", "")).split("(")[0].strip()
+        bg_row = "#FFFFFF" if idx % 2 != 0 else "#F8FAFC"
+        rows_html.append(f"""
+        <tr style="background-color:{bg_row}; border-bottom:1px solid #E2E8F0;">
+            <td style="padding:10px 8px; text-align:center; font-weight:700; color:#64748B;">{idx}</td>
+            <td style="padding:10px 10px; font-weight:800; color:#EC2024; font-family:'Montserrat', sans-serif;">{r.get('id_requisicion', '')}</td>
+            <td style="padding:10px 10px; text-align:center; color:#334155;">{r.get('fecha_requisicion', '')}</td>
+            <td style="padding:10px 10px; color:#0F172A; font-weight:600;">{r.get('area_impacto', '')}</td>
+            <td style="padding:10px 10px; color:#475569;">{solic}</td>
+            <td style="padding:10px 12px; color:#1E293B;">{r.get('descripcion_breve', '')}</td>
+            <td style="padding:10px 8px; text-align:center; color:#0F172A; font-weight:700;">{cot_num}</td>
+            <td style="padding:10px 12px; text-align:right; font-weight:700; color:#0F172A;">${monto_val:,.2f}</td>
+        </tr>
+        """)
+
+    table_rows_str = "".join(rows_html)
+    solicitante_firma = solicitante_remitente or "Jesús Alberto Morales López"
+
+    # 5. Cuerpo HTML Consolidado
+    html_body = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Solicitud de Autorización de Requisiciones - SIGRAMA</title>
+</head>
+<body style="margin:0; padding:0; background-color:#F1F5F9; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-font-smoothing:antialiased;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:850px; margin:25px auto; background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:8px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+        <!-- ENCABEZADO INSTITUCIONAL SIGRAMA -->
+        <tr>
+            <td style="background-color:#FFFFFF; padding:22px 32px; border-bottom:4px solid #EC2024; text-align:left;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td align="left" style="vertical-align:middle;">
+                            <img src="cid:logo_sigrama_cid" alt="SIGRAMA" width="160" style="display:block; border:0; outline:none; text-decoration:none;">
+                        </td>
+                        <td align="right" style="vertical-align:middle;">
+                            <div style="font-size:18px; font-weight:900; color:#111111; letter-spacing:0.5px; font-family:'Montserrat', sans-serif;">
+                                INDUSTRIA SIGRAMA S.A. DE C.V.
+                            </div>
+                            <div style="font-size:11px; color:#EC2024; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-top:2px;">
+                                Control y Seguimiento de Requisiciones de Compra
+                            </div>
+                            <div style="font-size:11px; color:#64748B; margin-top:2px;">
+                                Fecha de Emisión: <strong>{today_str}</strong> &bull; Planta Juan Escutia
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <tr>
+            <td style="padding:28px 32px;">
+                <p style="font-size:15px; color:#1E293B; line-height:1.6; margin-bottom:12px;">
+                    <strong>Estimada Lic. Lorena Hernández Cuéllar,</strong>
+                </p>
+                <p style="font-size:14px; color:#334155; line-height:1.6; margin-bottom:18px;">
+                    Buen día. Esperando que se encuentre muy bien al recibir el presente, nos dirigimos a usted de la manera más atenta y cordial para solicitar su <strong>amable visto bueno y autorización</strong> para el paquete de <strong>{len(reqs_list)} requisición(es) de compra</strong> requeridas para la continuidad operativa y proyectos en planta, detalladas en el siguiente cuadro resumen:
+                </p>
+
+                <!-- TABLA CONSOLIDADA -->
+                <div style="font-size:13px; font-weight:800; color:#0F172A; margin:20px 0 8px 0; text-transform:uppercase; letter-spacing:0.5px;">
+                    📋 Resumen Ejecutivo de Requisiciones Seleccionadas
+                </div>
+                <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #CBD5E1; border-radius:6px; overflow:hidden; font-size:12px; margin-bottom:16px; border-collapse:collapse;">
+                    <thead style="background-color:#0F172A; color:#FFFFFF;">
+                        <tr>
+                            <th style="padding:10px 8px; text-align:center;">#</th>
+                            <th style="padding:10px 10px; text-align:left;">Folio</th>
+                            <th style="padding:10px 10px; text-align:center;">Fecha</th>
+                            <th style="padding:10px 10px; text-align:left;">Área</th>
+                            <th style="padding:10px 10px; text-align:left;">Solicitante</th>
+                            <th style="padding:10px 12px; text-align:left;">Descripción / Concepto</th>
+                            <th style="padding:10px 8px; text-align:center;">Cot.</th>
+                            <th style="padding:10px 12px; text-align:right;">Monto Est.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {table_rows_str}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background-color:#F8FAFC; font-weight:800;">
+                            <td colspan="7" style="padding:11px 12px; text-align:right; border-top:2px solid #CBD5E1; font-size:12.5px; color:#0F172A;">
+                                TOTAL ESTIMADO ACUMULADO:
+                            </td>
+                            <td style="padding:11px 12px; text-align:right; border-top:2px solid #CBD5E1; font-size:14px; color:#EC2024;">
+                                ${total_monto:,.2f} MXN
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <!-- CAJA DESTACADA DE SOLICITUD AMABLE DE VISTO BUENO -->
+                <div style="background-color:#F0FDF4; border:1px solid #BBF7D0; border-left:4px solid #10B981; border-radius:6px; padding:18px; margin:22px 0;">
+                    <div style="font-weight:bold; font-size:14.5px; color:#166534;">
+                        ✓ Solicitud de Visto Bueno y Autorización
+                    </div>
+                    <div style="font-size:13.5px; color:#15803D; margin-top:6px; line-height:1.5;">
+                        Lic. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su <strong>amable visto bueno y autorización</strong> para estas <strong>{len(reqs_list)} requisiciones</strong>, con el fin de poder continuar con el proceso y formalizar la emisión de las correspondientes Órdenes de Compra (PO).
+                    </div>
+                </div>
+
+                <p style="font-size:13.5px; color:#334155; line-height:1.6;">
+                    Adjunto a este correo encontrará los expedientes correspondientes en formato PDF (la requisición original de cada folio y las cotizaciones comerciales de los proveedores) para su debida revisión y resguardo documental.
+                </p>
+                <p style="font-size:13.5px; color:#334155; line-height:1.6;">
+                    Agradecemos de antemano su valioso apoyo y quedamos a sus respetables órdenes para cualquier duda o comentario.
+                </p>
+
+                <!-- FIRMA ATENTA -->
+                <p style="font-size:14px; color:#1E293B; margin-top:22px; line-height:1.5;">
+                    Atentamente,<br>
+                    <strong style="color:#0F172A;">{solicitante_firma}</strong><br>
+                    <span style="color:#64748B; font-size:12.5px;">Industria Sigrama S.A. de C.V.</span>
+                </p>
+            </td>
+        </tr>
+
+        <!-- PIE DE CORREO INSTITUCIONAL -->
+        <tr>
+            <td style="background-color:#F8FAFC; padding:16px 30px; border-top:1px solid #E2E8F0; text-align:center; font-size:11px; color:#64748B;">
+                INDUSTRIA SIGRAMA S.A. DE C.V. &bull; Módulo de Control de Requisiciones y Compras &bull; México<br>
+                Este correo y sus archivos adjuntos son para uso exclusivo de autorización y contienen información confidencial.
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+"""
+
+    part_html = MIMEText(html_body, "html", "utf-8")
+    part_html.replace_header("Content-Transfer-Encoding", "base64")
+    msg_alt.attach(part_html)
+
+    # 6. Incrustar Logotipo SIGRAMA como Imagen Inline (CID)
+    logo_path = LOGO_SIGRAMA_PATH
+    if not logo_path.exists():
+        alt_logo = Path(r"C:\Users\albertol\.gemini\antigravity\scratch\remisiones-de-materiales\logo_sigrama.png")
+        if alt_logo.exists():
+            logo_path = alt_logo
+
+    if logo_path.exists():
+        try:
+            with open(logo_path, "rb") as lf:
+                logo_bytes = lf.read()
+            img_part = MIMEImage(logo_bytes, _subtype="png")
+            img_part.add_header("Content-ID", "<logo_sigrama_cid>")
+            img_part.add_header("Content-Disposition", "inline", filename="logo_sigrama.png")
+            msg.attach(img_part)
+        except Exception as e:
+            print(f"Aviso: No se pudo incrustar logotipo inline: {e}")
+
+    # 7. Adjuntar todos los archivos PDF de las requisiciones seleccionadas
+    attached_names = set()
+    for r in reqs_list:
+        rid = r.get("id_requisicion", "")
+        folder = get_req_directory(rid)
+        if folder.exists():
+            for pdf_path in folder.glob("*.pdf"):
+                fname = pdf_path.name
+                if fname not in attached_names:
+                    attached_names.add(fname)
+                    try:
+                        with open(pdf_path, "rb") as pf:
+                            p_bytes = pf.read()
+                        part_pdf = MIMEBase("application", "pdf")
+                        part_pdf.set_payload(p_bytes)
+                        encoders.encode_base64(part_pdf)
+                        part_pdf.add_header("Content-Disposition", f'attachment; filename="{fname}"')
+                        msg.attach(part_pdf)
+                    except Exception as e:
+                        print(f"Error adjuntando {fname}: {e}")
+
+    return msg.as_bytes()
+

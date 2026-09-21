@@ -34,6 +34,7 @@ from database import (
     get_requisicion_by_id,
     load_catalogos
 )
+from email_generator import build_consolidated_requisitions_eml
 
 
 def render_dashboard():
@@ -165,8 +166,8 @@ def render_dashboard():
             st.info("No hay requisiciones que coincidan con los filtros seleccionados.")
             return
 
-        # Función auxiliar para renderizar una tabla de registros estilo Odoo
-        def render_odoo_table_section(sub_df: pd.DataFrame, group_title: str = ""):
+        # Función auxiliar para renderizar una tabla de registros estilo Odoo con casillas de verificación
+        def render_odoo_table_section(sub_df: pd.DataFrame, group_title: str = "", table_key: str = "tabla_odoo_main"):
             if group_title:
                 sub_total_monto = sub_df["monto_estimado"].sum()
                 st.markdown(f"""
@@ -175,19 +176,6 @@ def render_dashboard():
                     <span style="font-size:12px; font-weight:700; color:#475569;">Subtotal: ${sub_total_monto:,.2f} MXN</span>
                 </div>
                 """, unsafe_allow_html=True)
-
-            # Columnas ejecutivas estilo Odoo
-            col_specs = [
-                ("Folio", "id_requisicion"),
-                ("Fecha", "fecha_requisicion"),
-                ("Solicitante", "solicitante"),
-                ("Área de Impacto", "area_impacto"),
-                ("Descripción Breve", "descripcion_breve"),
-                ("Cotizaciones", "num_cotizaciones"),
-                ("Monto Estimado", "monto_estimado"),
-                ("Estatus", "estatus"),
-                ("PO", "folio_po")
-            ]
 
             # Formatear datos para presentación impecable
             display_df = sub_df.copy()
@@ -205,11 +193,14 @@ def render_dashboard():
 
             cols_to_show = ["Folio", "Fecha", "Estatus Odoo", "Área", "Solicitante", "Descripción", "Cot.", "Monto ($)", "Folio PO"]
             
-            # Renderizar con st.dataframe interactivo y estilizado
-            st.dataframe(
+            # Renderizar con st.dataframe interactivo con selección múltiple mediante casillas
+            sel_grid = st.dataframe(
                 display_df[cols_to_show],
                 use_container_width=True,
                 hide_index=True,
+                on_select="rerun",
+                selection_mode="multi-row",
+                key=table_key,
                 column_config={
                     "Folio": st.column_config.TextColumn("Folio", width="small"),
                     "Fecha": st.column_config.TextColumn("Fecha", width="small"),
@@ -220,32 +211,63 @@ def render_dashboard():
                     "Folio PO": st.column_config.TextColumn("Orden (PO)", width="small")
                 }
             )
+            return sel_grid, display_df
+
+        selected_folios = []
 
         # Si el usuario seleccionó "Agrupar por"
         if group_by == "Estatus":
-            for est_name in [ESTATUS_PENDIENTE_AUTORIZACION, ESTATUS_ESPERA_COTIZACION, ESTATUS_PO_GENERADA, ESTATUS_ARCHIVADO]:
+            for idx_grp, est_name in enumerate([ESTATUS_PENDIENTE_AUTORIZACION, ESTATUS_ESPERA_COTIZACION, ESTATUS_PO_GENERADA, ESTATUS_ARCHIVADO]):
                 subset = df_filtered[df_filtered["estatus"] == est_name]
                 if not subset.empty:
                     with st.expander(f"📁 {est_name} ({len(subset)}) — Subtotal: ${subset['monto_estimado'].sum():,.2f} MXN", expanded=(est_name == ESTATUS_PENDIENTE_AUTORIZACION or est_name == ESTATUS_ESPERA_COTIZACION)):
-                        render_odoo_table_section(subset)
+                        sel_g, d_df = render_odoo_table_section(subset, table_key=f"tabla_odoo_estatus_{idx_grp}")
+                        s_idx = []
+                        if isinstance(sel_g, dict):
+                            s_idx = sel_g.get("selection", {}).get("rows", [])
+                        elif hasattr(sel_g, "selection") and hasattr(sel_g.selection, "rows"):
+                            s_idx = sel_g.selection.rows
+                        for i in s_idx:
+                            selected_folios.append(d_df.iloc[i]["Folio"])
 
         elif group_by == "Área de Impacto":
-            for area_name in sorted(df_filtered["area_impacto"].unique()):
+            for idx_grp, area_name in enumerate(sorted(df_filtered["area_impacto"].unique())):
                 subset = df_filtered[df_filtered["area_impacto"] == area_name]
                 if not subset.empty:
                     with st.expander(f"🎯 {area_name} ({len(subset)}) — Subtotal: ${subset['monto_estimado'].sum():,.2f} MXN", expanded=True):
-                        render_odoo_table_section(subset)
+                        sel_g, d_df = render_odoo_table_section(subset, table_key=f"tabla_odoo_area_{idx_grp}")
+                        s_idx = []
+                        if isinstance(sel_g, dict):
+                            s_idx = sel_g.get("selection", {}).get("rows", [])
+                        elif hasattr(sel_g, "selection") and hasattr(sel_g.selection, "rows"):
+                            s_idx = sel_g.selection.rows
+                        for i in s_idx:
+                            selected_folios.append(d_df.iloc[i]["Folio"])
 
         elif group_by == "Solicitante":
-            for sol_name in sorted(df_filtered["solicitante"].unique()):
+            for idx_grp, sol_name in enumerate(sorted(df_filtered["solicitante"].unique())):
                 subset = df_filtered[df_filtered["solicitante"] == sol_name]
                 if not subset.empty:
                     with st.expander(f"👤 {sol_name} ({len(subset)}) — Subtotal: ${subset['monto_estimado'].sum():,.2f} MXN", expanded=False):
-                        render_odoo_table_section(subset)
+                        sel_g, d_df = render_odoo_table_section(subset, table_key=f"tabla_odoo_sol_{idx_grp}")
+                        s_idx = []
+                        if isinstance(sel_g, dict):
+                            s_idx = sel_g.get("selection", {}).get("rows", [])
+                        elif hasattr(sel_g, "selection") and hasattr(sel_g.selection, "rows"):
+                            s_idx = sel_g.selection.rows
+                        for i in s_idx:
+                            selected_folios.append(d_df.iloc[i]["Folio"])
 
         else:
             # Lista plana directa
-            render_odoo_table_section(df_filtered)
+            sel_g, d_df = render_odoo_table_section(df_filtered, table_key="tabla_odoo_master_selection")
+            s_idx = []
+            if isinstance(sel_g, dict):
+                s_idx = sel_g.get("selection", {}).get("rows", [])
+            elif hasattr(sel_g, "selection") and hasattr(sel_g.selection, "rows"):
+                s_idx = sel_g.selection.rows
+            for i in s_idx:
+                selected_folios.append(d_df.iloc[i]["Folio"])
 
         # Barra de pie de tabla estilo Odoo (Totales)
         st.markdown(f"""
@@ -254,6 +276,98 @@ def render_dashboard():
             <span><strong>Monto Total Acumulado:</strong> <span style="font-size:14px; font-weight:800; color:#0F172A;">${monto_total_est:,.2f} MXN</span></span>
         </div>
         """, unsafe_allow_html=True)
+
+        # =====================================================================
+        # PANEL DE ACCIÓN: GENERACIÓN DE CORREO (.EML) CONSOLIDADO DE AUTORIZACIÓN
+        # =====================================================================
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+        if selected_folios:
+            # Eliminar duplicados preservando orden
+            unique_folios = list(dict.fromkeys(selected_folios))
+            selected_records = [df_reqs[df_reqs["id_requisicion"] == f].iloc[0].to_dict() for f in unique_folios if not df_reqs[df_reqs["id_requisicion"] == f].empty]
+            
+            total_est_sel = sum(float(r.get("monto_estimado", 0.0) or 0.0) for r in selected_records)
+            folios_str = ", ".join(unique_folios)
+
+            # Contar adjuntos PDF disponibles físicamente en las carpetas
+            pdf_adjuntos_count = 0
+            for r in selected_records:
+                fdir = get_req_directory(r["id_requisicion"])
+                if fdir.exists():
+                    pdf_adjuntos_count += len(list(fdir.glob("*.pdf")))
+
+            st.markdown(f"""
+            <div style="background-color:#FFFFFF; border:1px solid #CBD5E1; border-left:4px solid #EC2024; border-radius:8px; padding:14px 18px; margin:14px 0 10px 0; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                <div style="font-size:14px; font-weight:800; color:#111111; font-family:'Montserrat', sans-serif;">
+                    📩 Solicitud de Autorización por Correo (.eml) — {len(selected_records)} Requisición(es) Seleccionada(s)
+                </div>
+                <div style="font-size:12px; color:#64748B; margin-top:2px;">
+                    Se generará el borrador RFC 822 (.eml) con el saludo respetuoso a Lic. Lorena Hernández, el cuadro comparativo consolidado y todos los expedientes PDF adjuntos.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            col_acc_left, col_acc_right = st.columns([1.1, 1.3])
+
+            with col_acc_left:
+                st.markdown(f"📌 **Folios marcados con casilla ({len(selected_records)}):**")
+                st.write(f"`{folios_str}`")
+                
+                st.markdown(f"""
+                <div style="background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:12px; font-size:12px; color:#334155;">
+                    <div>&bull; <strong>Presupuesto total del paquete:</strong> <span style="font-size:15px; font-weight:900; color:#EC2024;">${total_est_sel:,.2f} MXN</span></div>
+                    <div style="margin-top:4px;">&bull; <strong>Documentos PDF adjuntos:</strong> <span style="font-weight:700; color:#0F172A;">{pdf_adjuntos_count} archivo(s)</span> (requisiciones originales y cotizaciones).</div>
+                    <div style="margin-top:4px;">&bull; <strong>Logotipo SIGRAMA:</strong> Incrustado inline nativo (160px) con borde institucional.</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col_acc_right:
+                cf1, cf2 = st.columns(2)
+                with cf1:
+                    eml_to = st.text_input("Para (Destinatario):", value="Lorena Hernandez Cuellar <lhernandez@sigrama.com.mx>", key="eml_to_batch")
+                with cf2:
+                    eml_cc = st.text_input("Con copia (Cc):", value="Bryan Alejandro Flores Mancinas <bryan.mancinas@sigrama.com.mx>; Cruz Eduardo Carreon Rios <cruz.carreon@sigrama.com.mx>; jose.fernandez@sigrama.com.mx; Luis Alfredo Quintana Palma <luis.quintana@sigrama.com.mx>; Jesus Alberto Morales Lopez <jesus.morales@sigrama.com.mx>", key="eml_cc_batch")
+
+                usuario_actual_firma = st.session_state.get("usuario") or "Jesús Alberto Morales López"
+                eml_firma = st.text_input("Firma Solicitante:", value=usuario_actual_firma, key="eml_firma_batch")
+
+                # Generar archivo .eml consolidado en memoria
+                eml_bytes = build_consolidated_requisitions_eml(
+                    selected_records,
+                    destinatario_to=eml_to,
+                    destinatarios_cc=eml_cc,
+                    solicitante_remitente=eml_firma
+                )
+
+                tag_nombre = f"{len(selected_records)}_Requisiciones" if len(selected_records) > 1 else selected_records[0]["id_requisicion"]
+                st.download_button(
+                    label=f"📩 Descargar Borrador de Correo de Autorización (.eml)",
+                    data=eml_bytes,
+                    file_name=f"Autorizacion_{tag_nombre}.eml",
+                    mime="message/rfc822",
+                    type="primary",
+                    use_container_width=True,
+                    key="btn_descarga_eml_batch"
+                )
+
+            # Vista previa opcional
+            with st.expander("👁️ Ver Vista Previa del Resumen a Enviar en el Correo"):
+                preview_list = []
+                for r in selected_records:
+                    preview_list.append({
+                        "Folio": r.get("id_requisicion"),
+                        "Fecha": r.get("fecha_requisicion"),
+                        "Área": r.get("area_impacto"),
+                        "Solicitante": r.get("solicitante"),
+                        "Descripción": r.get("descripcion_breve"),
+                        "Cotizaciones": r.get("num_cotizaciones"),
+                        "Monto Estimado": f"${float(r.get('monto_estimado', 0.0)):,.2f} MXN"
+                    })
+                st.dataframe(pd.DataFrame(preview_list), use_container_width=True, hide_index=True)
+
+        else:
+            st.info("💡 **Selección de Requisiciones para Correo:** Marca las casillas de verificación en el extremo izquierdo de una o varias requisiciones en la tabla superior para generar y descargar el archivo de correo borrador (.eml) de solicitud de autorización para Lic. Lorena Hernández con todos sus PDFs adjuntos.")
 
         # Selector para abrir Expediente Permanente
         st.markdown("---")
