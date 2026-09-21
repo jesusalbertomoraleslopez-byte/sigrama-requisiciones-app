@@ -17,6 +17,16 @@ from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 import openpyxl
 
+# Sync con GitHub para persistencia en Streamlit Cloud
+try:
+    from github_sync import push_file_to_github, push_excel_dbs_to_github
+    _GITHUB_SYNC_AVAILABLE = True
+except Exception:
+    _GITHUB_SYNC_AVAILABLE = False
+    def push_file_to_github(*a, **kw): return True
+    def push_excel_dbs_to_github(): pass
+
+
 from config import (
     DATA_DIR,
     REQUISICIONES_DIR,
@@ -239,6 +249,15 @@ def _atomic_write_excel(df: pd.DataFrame, file_path: Path):
             temp_path.rename(file_path)
         except Exception:
             pass
+
+    # --- Sincronización con GitHub para persistencia en Streamlit Cloud ---
+    # Determinar la ruta relativa del archivo respecto al directorio del proyecto
+    try:
+        from config import DATA_DIR
+        repo_relative = file_path.relative_to(DATA_DIR.parent)
+        push_file_to_github(file_path, str(repo_relative).replace("\\", "/"))
+    except Exception:
+        pass
 
 
 # =============================================================================
