@@ -41,6 +41,39 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# =============================================================================
+# SOPORTE SSO & EMBED DESDE LA CONCENTRADORA (APP HUB)
+# =============================================================================
+is_embedded = False
+sso_user = None
+sso_role = "Usuario"
+
+try:
+    qp = dict(st.query_params) if hasattr(st, "query_params") else {}
+    embed_param = qp.get("embed")
+    if isinstance(embed_param, list): embed_param = embed_param[0] if embed_param else None
+    if str(embed_param).lower() in ("true", "1"):
+        is_embedded = True
+
+    sso_token = qp.get("sso_token")
+    if isinstance(sso_token, list): sso_token = sso_token[0] if sso_token else None
+    user_param = qp.get("sso_user")
+    if isinstance(user_param, list): user_param = user_param[0] if user_param else None
+    role_param = qp.get("sso_role", "Usuario")
+    if isinstance(role_param, list): role_param = role_param[0] if role_param else "Usuario"
+
+    if sso_token == "SIGRAMA_AUTH_TOKEN" and user_param:
+        sso_user = user_param
+        sso_role = role_param
+        st.session_state["sso_user"] = sso_user
+        st.session_state["sso_role"] = sso_role
+        st.session_state["usuario_actual"] = sso_user
+    elif "sso_user" in st.session_state:
+        sso_user = st.session_state["sso_user"]
+        sso_role = st.session_state.get("sso_role", "Usuario")
+except Exception:
+    pass
+
 # Inyección forzada de Favicon Oficial SIGRAMA en navegador
 if FAVICON_PATH.exists():
     with open(FAVICON_PATH, "rb") as f:
@@ -54,9 +87,22 @@ if FAVICON_PATH.exists():
     """, unsafe_allow_html=True)
 
 # Inyección de CSS Oficial SIGRAMA (PANTONE 485 C & PANTONE Black 7 C)
-st.markdown("""
+embed_css = """
+    /* Modo incrustado en Concentradora SIGRAMA */
+    header[data-testid="stHeader"], footer, div[data-testid="stDecoration"] {
+        display: none !important;
+    }
+    .block-container {
+        padding-top: 1.2rem !important;
+        padding-bottom: 2rem !important;
+    }
+""" if is_embedded else ""
+
+st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Questrial&display=swap');
+    {embed_css}
+
 
     /* Tipografías Oficiales */
     html, body, [class*="css"], .stApp {
@@ -219,6 +265,15 @@ def main():
 
         st.markdown("<hr style='border-color:#27272A;'>", unsafe_allow_html=True)
 
+        if sso_user:
+            st.markdown(f"""
+            <div style="background-color:#18181B; border:1px solid #3F3F46; border-radius:6px; padding:10px 12px; margin-bottom:12px;">
+                <div style="color:#A1A1AA; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">👤 Sesión Hub Conectada</div>
+                <div style="color:#FFFFFF; font-weight:bold; font-size:13px; margin-top:2px;">{sso_user}</div>
+                <div style="color:#EC2024; font-weight:700; font-size:11px; margin-top:1px;">Rol: {sso_role}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
         # Menú de Navegación por Fases
         menu_options = [
             "📝 Registro y Cotizaciones (Fase 1)",
@@ -261,7 +316,15 @@ def main():
     # =========================================================================
     # ENCABEZADO SUPERIOR CORPORATIVO EN EL ÁREA PRINCIPAL
     # =========================================================================
-    st.markdown("""
+    user_header_badge = ""
+    if sso_user:
+        user_header_badge = f"""
+            <span style="background-color:#F1F5F9; color:#0F172A; border:1px solid #CBD5E1; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:700; font-family:'Montserrat', sans-serif; margin-right:8px;">
+                👤 {sso_user}
+            </span>
+        """
+
+    st.markdown(f"""
     <div style="background-color:#FFFFFF; border-bottom:3px solid #EC2024; border-radius:8px; padding:14px 22px; margin-bottom:18px; box-shadow:0 2px 6px rgba(0,0,0,0.03); display:flex; justify-content:space-between; align-items:center;">
         <div>
             <div style="font-size:19px; font-weight:900; color:#111111; letter-spacing:0.5px; font-family:'Montserrat', sans-serif;">
@@ -271,7 +334,8 @@ def main():
                 Módulo Central de Control y Seguimiento de Requisiciones de Compra
             </div>
         </div>
-        <div style="text-align:right;">
+        <div style="display:flex; align-items:center;">
+            {user_header_badge}
             <span style="background-color:#FEF2F2; color:#DC2626; border:1px solid #FECACA; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:800; letter-spacing:0.5px; font-family:'Montserrat', sans-serif;">
                 PLANTA JUAN ESCUTIA
             </span>

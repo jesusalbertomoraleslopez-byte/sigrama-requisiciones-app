@@ -12,11 +12,11 @@ echo.
 set VENV_PYTHON=C:\Users\albertol\.gemini\antigravity\scratch\test_venv\Scripts\python.exe
 
 if exist "%VENV_PYTHON%" (
-    echo [INFO] Iniciando Streamlit usando el entorno virtual configurado...
-    "%VENV_PYTHON%" -m streamlit run app.py --server.port 8501 --browser.gatherUsageStats false
+    echo [INFO] Iniciando Streamlit usando el entorno virtual configurado en puerto 8506...
+    "%VENV_PYTHON%" -m streamlit run app.py --server.port 8506 --browser.gatherUsageStats false
 ) else (
-    echo [INFO] Iniciando Streamlit usando Python del sistema...
-    python -m streamlit run app.py --server.port 8501 --browser.gatherUsageStats false
+    echo [INFO] Iniciando Streamlit usando Python del sistema en puerto 8506...
+    python -m streamlit run app.py --server.port 8506 --browser.gatherUsageStats false
 )
 
 pause
