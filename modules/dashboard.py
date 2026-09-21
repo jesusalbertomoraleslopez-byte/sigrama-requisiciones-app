@@ -6,6 +6,7 @@ Módulo 3: Panel de Control (Dashboard), Vista Lista Odoo, Kanban y Expedientes
 """
 
 import os
+import re
 import datetime
 from pathlib import Path
 from typing import List, Dict, Any
@@ -166,6 +167,68 @@ def render_dashboard():
             st.info("No hay requisiciones que coincidan con los filtros seleccionados.")
             return
 
+        # Controles de Ordenamiento y Resaltado de Color (Estilo Remisiones)
+        ord_col1, ord_col2 = st.columns([1.3, 1.3])
+        with ord_col1:
+            sort_order = st.selectbox(
+                "↕️ Ordenar Requisiciones por:",
+                options=[
+                    "📅 Fecha: Más recientes primero (Nuevas arriba)",
+                    "📅 Fecha: Más antiguas primero (Cronológico ascendente)",
+                    "🔢 Folio: Mayor a menor (REQ descendente)",
+                    "🔢 Folio: Menor a mayor (REQ ascendente)"
+                ],
+                index=0,
+                key="odoo_sort_order"
+            )
+        with ord_col2:
+            highlight_mode = st.selectbox(
+                "🎨 Resaltado de Nuevas / Últimas (Estilo Remisiones):",
+                options=[
+                    "✨ Resaltar últimas requisiciones cargadas (Amarillo #FFF59D)",
+                    "⚪ Sin resaltar color"
+                ],
+                index=0,
+                key="odoo_highlight_mode"
+            )
+
+        # Función para extraer número de folio numérico (ej. REQ-23761 -> 23761)
+        def extract_req_num(id_val):
+            id_str = str(id_val).strip()
+            match = re.search(r'\d+', id_str)
+            if match:
+                return int(match.group(0))
+            return 0
+
+        # Determinar folios de las últimas requisiciones cargadas
+        max_date = df_reqs["fecha_requisicion"].max() if not df_reqs.empty else ""
+        ultimas_fecha_folios = set(df_reqs[df_reqs["fecha_requisicion"] == max_date]["id_requisicion"]) if max_date else set()
+        top5_folios = set(df_reqs.assign(_fnum=df_reqs["id_requisicion"].apply(extract_req_num)).sort_values(by="_fnum", ascending=False).head(5)["id_requisicion"]) if not df_reqs.empty else set()
+        session_recent = set(st.session_state.get("ultimos_folios_cargados", []))
+        ultimas_cargadas_set = session_recent.union(ultimas_fecha_folios).union(top5_folios)
+
+        # Aplicar ordenamiento al DataFrame filtrado
+        df_filtered["_sort_num"] = df_filtered["id_requisicion"].apply(extract_req_num)
+        if "Más recientes primero" in sort_order:
+            df_filtered = df_filtered.sort_values(by=["fecha_requisicion", "_sort_num"], ascending=[False, False])
+        elif "Más antiguas primero" in sort_order:
+            df_filtered = df_filtered.sort_values(by=["fecha_requisicion", "_sort_num"], ascending=[True, True])
+        elif "Mayor a menor" in sort_order:
+            df_filtered = df_filtered.sort_values(by=["_sort_num", "fecha_requisicion"], ascending=[False, False])
+        elif "Menor a mayor" in sort_order:
+            df_filtered = df_filtered.sort_values(by=["_sort_num", "fecha_requisicion"], ascending=[True, True])
+
+        df_filtered = df_filtered.drop(columns=["_sort_num"]).reset_index(drop=True)
+
+        # Leyenda de color si está activo el resaltado
+        if "Amarillo" in highlight_mode and ultimas_cargadas_set:
+            recientes_visibles = len(ultimas_cargadas_set.intersection(set(df_filtered["id_requisicion"])))
+            st.markdown(f"""
+            <div style="background-color:#FFFDE7; border:1px solid #FFE082; border-left:4px solid #FBC02D; padding:7px 14px; border-radius:6px; margin:8px 0 12px 0; font-size:12.5px; color:#424242; display:flex; align-items:center; gap:8px;">
+                <span>✨ <strong>Filas resaltadas en amarillo (#FFF59D):</strong> Requisiciones más recientes / últimas cargadas al sistema ({recientes_visibles} visibles en este listado).</span>
+            </div>
+            """, unsafe_allow_html=True)
+
         # Función auxiliar para renderizar una tabla de registros estilo Odoo con casillas de verificación
         def render_odoo_table_section(sub_df: pd.DataFrame, group_title: str = "", table_key: str = "tabla_odoo_main"):
             if group_title:
@@ -178,7 +241,7 @@ def render_dashboard():
                 """, unsafe_allow_html=True)
 
             # Formatear datos para presentación impecable
-            display_df = sub_df.copy()
+            display_df = sub_df.reset_index(drop=True).copy()
             
             # Formatear montos con moneda
             display_df["Monto ($)"] = display_df["monto_estimado"].apply(lambda v: f"${float(v):,.2f}" if float(v) > 0 else "-")
@@ -193,9 +256,18 @@ def render_dashboard():
 
             cols_to_show = ["Folio", "Fecha", "Estatus Odoo", "Área", "Solicitante", "Descripción", "Cot.", "Monto ($)", "Folio PO"]
             
+            # Aplicar estilo de color a las últimas cargadas (exactamente como en Remisiones #FFF59D)
+            if "Amarillo" in highlight_mode:
+                def highlight_recientes(row):
+                    is_recent = row["Folio"] in ultimas_cargadas_set
+                    return ['background-color: #FFF59D; color: #0F172A;' if is_recent else '' for _ in row]
+                data_to_render = display_df[cols_to_show].style.apply(highlight_recientes, axis=1)
+            else:
+                data_to_render = display_df[cols_to_show]
+
             # Renderizar con st.dataframe interactivo con selección múltiple mediante casillas
             sel_grid = st.dataframe(
-                display_df[cols_to_show],
+                data_to_render,
                 use_container_width=True,
                 hide_index=True,
                 on_select="rerun",

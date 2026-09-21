@@ -450,5 +450,10 @@ def render_requisition_wizard():
             if cotizaciones_captured:
                 save_cotizaciones(norm_req_id, cotizaciones_captured)
 
+            if "ultimos_folios_cargados" not in st.session_state:
+                st.session_state["ultimos_folios_cargados"] = []
+            if norm_req_id not in st.session_state["ultimos_folios_cargados"]:
+                st.session_state["ultimos_folios_cargados"].append(norm_req_id)
+
             st.success(f"🎉 Requisición {norm_req_id} guardada con éxito en BD_Requisiciones.xlsx y repositorio físico: {req_folder}")
             st.balloons()
