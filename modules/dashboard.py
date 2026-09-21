@@ -400,7 +400,7 @@ def render_dashboard():
                     📩 Solicitud de Autorización por Correo (.eml) — {len(selected_records)} Requisición(es) Seleccionada(s)
                 </div>
                 <div style="font-size:12px; color:#64748B; margin-top:2px;">
-                    Se generará el borrador RFC 822 (.eml) con el saludo respetuoso a Lic. Lorena Hernández, el cuadro comparativo consolidado y todos los expedientes PDF adjuntos.
+                    Se generará el borrador RFC 822 (.eml) con el saludo respetuoso a Ing. Lorena Hernandez, el cuadro comparativo consolidado y todos los expedientes PDF adjuntos.
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -426,7 +426,7 @@ def render_dashboard():
             with col_acc_right:
                 cf1, cf2 = st.columns(2)
                 with cf1:
-                    eml_to = st.text_input("Para (Destinatario):", value="Lorena Hernandez Cuellar <lhernandez@sigrama.com.mx>", key="eml_to_batch")
+                    eml_to = st.text_input("Para (Destinatario):", value="Ing. Lorena Hernandez <lhernandez@sigrama.com.mx>", key="eml_to_batch")
                 with cf2:
                     eml_cc = st.text_input("Con copia (Cc):", value="Bryan Alejandro Flores Mancinas <bryan.mancinas@sigrama.com.mx>; Cruz Eduardo Carreon Rios <cruz.carreon@sigrama.com.mx>; jose.fernandez@sigrama.com.mx; Luis Alfredo Quintana Palma <luis.quintana@sigrama.com.mx>; Jesus Alberto Morales Lopez <jesus.morales@sigrama.com.mx>", key="eml_cc_batch")
 
@@ -507,7 +507,7 @@ def render_dashboard():
                 st.dataframe(pd.DataFrame(preview_list), use_container_width=True, hide_index=True)
 
         else:
-            st.info("💡 **Selección de Requisiciones para Correo:** Marca las casillas de verificación en el extremo izquierdo de una o varias requisiciones en la tabla superior para generar y descargar el archivo de correo borrador (.eml) de solicitud de autorización para Lic. Lorena Hernández con todos sus PDFs adjuntos.")
+            st.info("💡 **Selección de Requisiciones para Correo:** Marca las casillas de verificación en el extremo izquierdo de una o varias requisiciones en la tabla superior para generar y descargar el archivo de correo borrador (.eml) de solicitud de autorización para Ing. Lorena Hernandez con todos sus PDFs adjuntos.")
 
         # Selector para abrir Expediente Permanente
         st.markdown("---")

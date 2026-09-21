@@ -122,7 +122,7 @@ INDUSTRIA SIGRAMA S.A. DE C.V.
 Para: {to_info['nombre']} <{to_info['correo']}>
 Con copia: {cc_names}
 
-Estimada Lic. {to_info['nombre']},
+Estimada {to_info['nombre']},
 
 Buen día. Esperando que se encuentre muy bien, por medio de la presente nos dirigimos a usted de la manera más atenta y cordial para solicitar su amable visto bueno y autorización para la Requisición {req_id}.
 
@@ -154,7 +154,7 @@ PLAZOS DE SEGUIMIENTO Y COMPROMISO:
 - Visto Bueno / Autorización: {dias_autorizacion} días hábiles (Fecha límite estimada: {fecha_limite_str})
 - Emisión estimada de Orden de Compra (PO): {plazo_po}
 
-Lic. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su amable visto bueno y autorización para la Requisición {req_id} dentro de un plazo estimado de {dias_autorizacion} días hábiles (a más tardar el {fecha_limite_str}), con el fin de poder continuar con el proceso y formalizar la correspondiente Orden de Compra (PO) en un plazo de {plazo_po}.
+Ing. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su amable visto bueno y autorización para la Requisición {req_id} dentro de un plazo estimado de {dias_autorizacion} días hábiles (a más tardar el {fecha_limite_str}), con el fin de poder continuar con el proceso y formalizar la correspondiente Orden de Compra (PO) en un plazo de {plazo_po}.
 
 Adjunto encontrará el expediente original en PDF y las cotizaciones de los proveedores para su debida revisión.
 
@@ -246,7 +246,7 @@ Industria Sigrama S.A. de C.V.
                 
                 <!-- SALUDO AMABLE Y ATENTO -->
                 <p style="font-size:15px; color:#1E293B; margin-top:0; font-weight:600;">
-                    Estimada Lic. {to_info['nombre']},
+                    Estimada {to_info['nombre']},
                 </p>
                 <p style="font-size:14px; color:#334155; line-height:1.6;">
                     Buen día. Esperando que se encuentre muy bien al recibir el presente, nos dirigimos a usted de la manera más atenta y cordial para solicitar su <strong>amable visto bueno y autorización</strong> para la <strong>Requisición {req_id}</strong>.
@@ -344,7 +344,7 @@ Industria Sigrama S.A. de C.V.
                         ✓ Solicitud de Visto Bueno y Autorización
                     </div>
                     <div style="font-size:13.5px; color:#15803D; margin-top:6px; line-height:1.5;">
-                        Lic. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su <strong>amable visto bueno y autorización</strong> para la <strong>Requisición {req_id}</strong> dentro del plazo estimado de <strong>{dias_autorizacion} días hábiles</strong> (a más tardar el <strong>{fecha_limite_str}</strong>), con el fin de poder continuar con el proceso y formalizar la correspondiente Orden de Compra (PO) en un plazo de <strong>{plazo_po}</strong>.
+                        Ing. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su <strong>amable visto bueno y autorización</strong> para la <strong>Requisición {req_id}</strong> dentro del plazo estimado de <strong>{dias_autorizacion} días hábiles</strong> (a más tardar el <strong>{fecha_limite_str}</strong>), con el fin de poder continuar con el proceso y formalizar la correspondiente Orden de Compra (PO) en un plazo de <strong>{plazo_po}</strong>.
                     </div>
                 </div>
 
@@ -571,7 +571,7 @@ def build_consolidated_requisitions_eml(
         <tr>
             <td style="padding:28px 32px;">
                 <p style="font-size:15px; color:#1E293B; line-height:1.6; margin-bottom:12px;">
-                    <strong>Estimada Lic. Lorena Hernández Cuéllar,</strong>
+                    <strong>Estimada Ing. Lorena Hernandez,</strong>
                 </p>
                 <p style="font-size:14px; color:#334155; line-height:1.6; margin-bottom:18px;">
                     Buen día. Esperando que se encuentre muy bien al recibir el presente, nos dirigimos a usted de la manera más atenta y cordial para solicitar su <strong>amable visto bueno y autorización</strong> para el paquete de <strong>{len(reqs_list)} requisición(es) de compra</strong> requeridas para la continuidad operativa y proyectos en planta, detalladas en el siguiente cuadro resumen:
@@ -635,12 +635,12 @@ def build_consolidated_requisitions_eml(
                 </div>
 
                 <!-- CAJA DESTACADA DE SOLICITUD AMABLE DE VISTO BUENO -->
-                <div style="background-color:#F0FDF4; border:1px solid #BBF7D0; border-left:4px solid #10B981; border-radius:6px; padding:18px; margin:22px 0;">
+                <div style="background-color:#F0FDF4; border:1px solid #BBF7D0; border-left:4px solid #10B981; border-radius:6px; padding:18px; margin:24px 0;">
                     <div style="font-weight:bold; font-size:14.5px; color:#166534;">
                         ✓ Solicitud de Visto Bueno y Autorización
                     </div>
                     <div style="font-size:13.5px; color:#15803D; margin-top:6px; line-height:1.5;">
-                        Lic. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su <strong>amable visto bueno y autorización</strong> para estas <strong>{len(reqs_list)} requisiciones</strong> dentro del plazo estimado de <strong>{dias_autorizacion} días hábiles</strong> (a más tardar el <strong>{fecha_limite_str}</strong>), con el fin de poder continuar con el proceso y formalizar la emisión de las correspondientes Órdenes de Compra (PO) en un plazo estimado de <strong>{plazo_po}</strong>.
+                        Ing. Lorena, le agradeceríamos enormemente si nos puede apoyar confirmando por este medio su <strong>amable visto bueno y autorización</strong> para estas <strong>{len(reqs_list)} requisiciones</strong> dentro del plazo estimado de <strong>{dias_autorizacion} días hábiles</strong> (a más tardar el <strong>{fecha_limite_str}</strong>), con el fin de poder continuar con el proceso y formalizar la emisión de las correspondientes Órdenes de Compra (PO) en un plazo estimado de <strong>{plazo_po}</strong>.
                     </div>
                 </div>
 

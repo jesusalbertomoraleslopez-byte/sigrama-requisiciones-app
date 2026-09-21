@@ -118,7 +118,7 @@ PROVEEDORES_DEFAULT = [
 
 # Destinatarios Oficiales de Solicitud de Autorización
 DESTINATARIO_PRINCIPAL_DEFAULT = {
-    "nombre": "Lorena Hernandez Cuellar",
+    "nombre": "Ing. Lorena Hernandez",
     "correo": "lhernandez@sigrama.com.mx",
     "puesto": "Dirección / Autorización de Compras"
 }
@@ -132,7 +132,7 @@ DESTINATARIOS_CC_DEFAULT = [
 ]
 
 DIRECTORES_DEFAULT = [
-    {"nombre": "Lorena Hernandez Cuellar", "puesto": "Dirección / Autorización", "correo": "lhernandez@sigrama.com.mx"},
+    {"nombre": "Ing. Lorena Hernandez", "puesto": "Dirección / Autorización", "correo": "lhernandez@sigrama.com.mx"},
     {"nombre": "Bryan Alejandro Flores Mancinas", "puesto": "Compras / Proyectos", "correo": "bryan.mancinas@sigrama.com.mx"},
     {"nombre": "Cruz Eduardo Carreon Rios", "puesto": "Operaciones", "correo": "cruz.carreon@sigrama.com.mx"},
     {"nombre": "Jose Fernandez", "puesto": "Dirección", "correo": "jose.fernandez@sigrama.com.mx"},

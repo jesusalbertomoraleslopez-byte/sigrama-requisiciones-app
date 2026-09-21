@@ -353,7 +353,7 @@ def render_requisition_wizard():
         <div style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase;">Asunto Normativo del Correo:</div>
         <div style="font-size:15px; font-weight:800; color:#0F172A; margin-top:2px;">{strict_subject}</div>
         <div style="font-size:12px; color:#1E293B; margin-top:6px;">
-            ✉️ <strong>Para (Autorización):</strong> Lorena Hernandez Cuellar &lt;lhernandez@sigrama.com.mx&gt;
+            ✉️ <strong>Para (Autorización):</strong> Ing. Lorena Hernandez &lt;lhernandez@sigrama.com.mx&gt;
         </div>
         <div style="font-size:11px; color:#64748B; margin-top:3px;">
             📋 <strong>Con copia (Cc):</strong> Bryan Flores &bull; Cruz Carreón &bull; José Fernández &bull; Luis Quintana &bull; Jesús Morales
