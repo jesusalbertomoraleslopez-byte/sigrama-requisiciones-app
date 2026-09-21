@@ -33,7 +33,8 @@ from database import (
     load_catalogos,
     save_requisicion,
     save_cotizaciones,
-    get_requisicion_by_id
+    get_requisicion_by_id,
+    get_next_sol_consecutivo
 )
 from email_generator import build_requisition_eml
 
@@ -175,10 +176,17 @@ def render_requisition_wizard():
 
     st.markdown("##### 📌 Datos Clave de la Requisición (Revisión y Ajuste)")
 
-    col_id, col_fecha, col_prioridad = st.columns([1.5, 1.2, 1.3])
+    next_sol = get_next_sol_consecutivo()
+    col_sol_num, col_id, col_fecha, col_prioridad = st.columns([1.2, 1.3, 1.1, 1.2])
+    with col_sol_num:
+        sol_id_input = st.text_input(
+            "🏷️ Consecutivo Interno:",
+            value=data_state.get("folio_solicitud") or next_sol,
+            help="Consecutivo interno para Planta Metales (SOL-XXXXX)."
+        )
     with col_id:
         req_id_input = st.text_input(
-            "ID Requisición (Folio):",
+            "Folio Oficial (REQ):",
             value=data_state["id_requisicion"] or "REQ-26001",
             help="Formato estándar REQ-XXXXX o REQ XXXXX."
         )
@@ -356,6 +364,7 @@ def render_requisition_wizard():
     # Preparar diccionario para guardado y generación
     req_to_save = {
         "id_requisicion": norm_req_id,
+        "folio_solicitud": sol_id_input.strip() if 'sol_id_input' in locals() and sol_id_input.strip() else next_sol,
         "fecha_requisicion": fecha_str,
         "solicitante": solicitante_input,
         "area_impacto": area_input,

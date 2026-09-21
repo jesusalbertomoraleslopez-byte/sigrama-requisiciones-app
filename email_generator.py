@@ -53,6 +53,7 @@ def build_requisition_eml(
 
     # 1. Asunto Normativo Estricto: 'REQ XXXXX - Descripción Breve - Fecha - Área'
     req_id = req_data.get("id_requisicion", "REQ-00000")
+    sol_id = req_data.get("folio_solicitud", "")
     descripcion = req_data.get("descripcion_breve", "Suministro de Materiales")
     fecha = req_data.get("fecha_requisicion", datetime.date.today().strftime("%Y-%m-%d"))
     area = req_data.get("area_impacto", "Materiales")
@@ -171,6 +172,8 @@ Industria Sigrama S.A. de C.V.
 
     cc_html_badges = " ".join([f"""<span style="background-color:#F1F5F9; color:#475569; padding:3px 7px; border-radius:4px; font-size:11px; margin-right:4px; border:1px solid #E2E8F0;">{c['nombre']}</span>""" for c in cc_list])
 
+    sol_badge_header = f"""<div style="font-size:12px; color:#EC2024; margin-top:3px; font-weight:800; font-family:'Montserrat', sans-serif;">{sol_id}</div>""" if sol_id else ""
+
     # 6. Cuerpo HTML Profesional con Logotipo SIGRAMA exacto como en Remisiones (width="160")
     html_body = f"""<!DOCTYPE html>
 <html>
@@ -194,6 +197,7 @@ Industria Sigrama S.A. de C.V.
                             <div style="display:inline-block; background-color:#0F172A; color:#FFFFFF; padding:5px 12px; border-radius:6px; font-weight:bold; font-size:14px; margin-top:4px; letter-spacing:0.5px;">
                                 {req_id}
                             </div>
+                            {sol_badge_header}
                             <div style="font-size:11px; color:#64748B; margin-top:3px; font-weight:600;">
                                 {planta}
                             </div>
@@ -232,6 +236,10 @@ Industria Sigrama S.A. de C.V.
                         📋 Resumen de la Requisición
                     </div>
                     <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;">
+                        <tr>
+                            <td style="padding:9px 14px; font-size:13px; color:#64748B; width:35%; border-bottom:1px solid #F1F5F9; font-weight:600;">Consecutivo Interno:</td>
+                            <td style="padding:9px 14px; font-size:13px; color:#0F172A; border-bottom:1px solid #F1F5F9; font-weight:800;">{sol_id if sol_id else '-'}</td>
+                        </tr>
                         <tr>
                             <td style="padding:9px 14px; font-size:13px; color:#64748B; width:35%; border-bottom:1px solid #F1F5F9; font-weight:600;">Área de Impacto:</td>
                             <td style="padding:9px 14px; font-size:13px; color:#0F172A; border-bottom:1px solid #F1F5F9; font-weight:700;">{area}</td>
@@ -442,10 +450,13 @@ def build_consolidated_requisitions_eml(
         total_monto += monto_val
         cot_num = int(r.get("num_cotizaciones", 0) or 0)
         solic = str(r.get("solicitante", "")).split("(")[0].strip()
+        sol_id = r.get("folio_solicitud", "")
+        sol_badge = f"<span style='font-size:11px; font-weight:800; color:#0F172A; background-color:#F1F5F9; border:1px solid #CBD5E1; padding:2px 6px; border-radius:4px;'>{sol_id}</span>" if sol_id else "-"
         bg_row = "#FFFFFF" if idx % 2 != 0 else "#F8FAFC"
         rows_html.append(f"""
         <tr style="background-color:{bg_row}; border-bottom:1px solid #E2E8F0;">
             <td style="padding:10px 8px; text-align:center; font-weight:700; color:#64748B;">{idx}</td>
+            <td style="padding:10px 10px; text-align:center;">{sol_badge}</td>
             <td style="padding:10px 10px; font-weight:800; color:#EC2024; font-family:'Montserrat', sans-serif;">{r.get('id_requisicion', '')}</td>
             <td style="padding:10px 10px; text-align:center; color:#334155;">{r.get('fecha_requisicion', '')}</td>
             <td style="padding:10px 10px; color:#0F172A; font-weight:600;">{r.get('area_impacto', '')}</td>
@@ -510,7 +521,8 @@ def build_consolidated_requisitions_eml(
                     <thead style="background-color:#0F172A; color:#FFFFFF;">
                         <tr>
                             <th style="padding:10px 8px; text-align:center;">#</th>
-                            <th style="padding:10px 10px; text-align:left;">Folio</th>
+                            <th style="padding:10px 10px; text-align:center;">Interno</th>
+                            <th style="padding:10px 10px; text-align:left;">Folio REQ</th>
                             <th style="padding:10px 10px; text-align:center;">Fecha</th>
                             <th style="padding:10px 10px; text-align:left;">Área</th>
                             <th style="padding:10px 10px; text-align:left;">Solicitante</th>
@@ -524,7 +536,7 @@ def build_consolidated_requisitions_eml(
                     </tbody>
                     <tfoot>
                         <tr style="background-color:#F8FAFC; font-weight:800;">
-                            <td colspan="7" style="padding:11px 12px; text-align:right; border-top:2px solid #CBD5E1; font-size:12.5px; color:#0F172A;">
+                            <td colspan="8" style="padding:11px 12px; text-align:right; border-top:2px solid #CBD5E1; font-size:12.5px; color:#0F172A;">
                                 TOTAL ESTIMADO ACUMULADO:
                             </td>
                             <td style="padding:11px 12px; text-align:right; border-top:2px solid #CBD5E1; font-size:14px; color:#EC2024;">

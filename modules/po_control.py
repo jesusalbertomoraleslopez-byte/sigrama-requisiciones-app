@@ -72,6 +72,7 @@ def render_po_control():
     if search_query:
         mask = (
             df_filtered["id_requisicion"].str.lower().str.contains(search_query) |
+            df_filtered.get("folio_solicitud", pd.Series("", index=df_filtered.index)).str.lower().str.contains(search_query) |
             df_filtered["solicitante"].str.lower().str.contains(search_query) |
             df_filtered["descripcion_breve"].str.lower().str.contains(search_query)
         )
@@ -85,10 +86,11 @@ def render_po_control():
     options_list = []
     for _, row in df_filtered.iterrows():
         rid = row["id_requisicion"]
+        sol_p = f"[{row.get('folio_solicitud', '')}] " if row.get("folio_solicitud") else ""
         desc = row["descripcion_breve"][:40]
         est = row["estatus"]
         sol = row["solicitante"][:25]
-        options_list.append(f"{rid} | {est} | {sol} | {desc}")
+        options_list.append(f"{rid} | {sol_p}{est} | {sol} | {desc}")
 
     selected_option = st.selectbox(
         "Seleccionar Requisición para procesar:",
@@ -109,7 +111,7 @@ def render_po_control():
     st.markdown("##### 📌 Expediente Actual de la Requisición")
     
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Folio Requisición", req_data.get("id_requisicion"))
+    c1.metric("Folio Requisición", req_data.get("id_requisicion"), delta=f"Interno: {req_data.get('folio_solicitud', '-')}", delta_color="off")
     c2.metric("Fecha Solicitud", req_data.get("fecha_requisicion"))
     c3.metric("Área de Impacto", req_data.get("area_impacto"))
     c4.metric("Estatus Actual", req_data.get("estatus"))

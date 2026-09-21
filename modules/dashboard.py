@@ -132,6 +132,7 @@ def render_dashboard():
     if search_text:
         mask = (
             df_filtered["id_requisicion"].str.lower().str.contains(search_text) |
+            df_filtered.get("folio_solicitud", pd.Series("", index=df_filtered.index)).str.lower().str.contains(search_text) |
             df_filtered["solicitante"].str.lower().str.contains(search_text) |
             df_filtered["descripcion_breve"].str.lower().str.contains(search_text) |
             df_filtered["folio_po"].str.lower().str.contains(search_text) |
@@ -173,10 +174,13 @@ def render_dashboard():
             sort_order = st.selectbox(
                 "↕️ Ordenar Requisiciones por:",
                 options=[
-                    "📅 Fecha: Más recientes primero (Nuevas arriba)",
-                    "📅 Fecha: Más antiguas primero (Cronológico ascendente)",
-                    "🔢 Folio: Mayor a menor (REQ descendente)",
-                    "🔢 Folio: Menor a mayor (REQ ascendente)"
+                    "⚡ Últimas subidas / registradas primero (Nuevas arriba)",
+                    "📅 Fecha de Documento: Más recientes primero",
+                    "📅 Fecha de Documento: Más antiguas primero (Cronológico)",
+                    "🏷️ Consecutivo Interno: Mayor a menor (SOL descendente)",
+                    "🏷️ Consecutivo Interno: Menor a mayor (SOL ascendente)",
+                    "🔢 Folio Oficial: Mayor a menor (REQ descendente)",
+                    "🔢 Folio Oficial: Menor a mayor (REQ ascendente)"
                 ],
                 index=0,
                 key="odoo_sort_order"
@@ -192,7 +196,7 @@ def render_dashboard():
                 key="odoo_highlight_mode"
             )
 
-        # Función para extraer número de folio numérico (ej. REQ-23761 -> 23761)
+        # Funciones para extraer números de orden
         def extract_req_num(id_val):
             id_str = str(id_val).strip()
             match = re.search(r'\d+', id_str)
@@ -200,25 +204,44 @@ def render_dashboard():
                 return int(match.group(0))
             return 0
 
+        def extract_sol_num(id_val):
+            id_str = str(id_val).strip()
+            match = re.search(r'\d+', id_str)
+            if match:
+                return int(match.group(0))
+            return 0
+
         # Determinar folios de las últimas requisiciones cargadas
+        max_reg = df_reqs["fecha_registro"].max() if "fecha_registro" in df_reqs.columns and not df_reqs.empty else ""
+        ultimas_reg_folios = set(df_reqs[df_reqs["fecha_registro"] == max_reg]["id_requisicion"]) if max_reg else set()
+        top5_cargadas = set(df_reqs.assign(_snum=df_reqs.get("folio_solicitud", pd.Series("", index=df_reqs.index)).apply(extract_sol_num)).sort_values(by=["fecha_registro", "_snum"], ascending=[False, False]).head(5)["id_requisicion"]) if not df_reqs.empty else set()
         max_date = df_reqs["fecha_requisicion"].max() if not df_reqs.empty else ""
         ultimas_fecha_folios = set(df_reqs[df_reqs["fecha_requisicion"] == max_date]["id_requisicion"]) if max_date else set()
         top5_folios = set(df_reqs.assign(_fnum=df_reqs["id_requisicion"].apply(extract_req_num)).sort_values(by="_fnum", ascending=False).head(5)["id_requisicion"]) if not df_reqs.empty else set()
         session_recent = set(st.session_state.get("ultimos_folios_cargados", []))
-        ultimas_cargadas_set = session_recent.union(ultimas_fecha_folios).union(top5_folios)
+        ultimas_cargadas_set = session_recent.union(ultimas_reg_folios).union(top5_cargadas).union(ultimas_fecha_folios).union(top5_folios)
 
         # Aplicar ordenamiento al DataFrame filtrado
         df_filtered["_sort_num"] = df_filtered["id_requisicion"].apply(extract_req_num)
-        if "Más recientes primero" in sort_order:
-            df_filtered = df_filtered.sort_values(by=["fecha_requisicion", "_sort_num"], ascending=[False, False])
-        elif "Más antiguas primero" in sort_order:
-            df_filtered = df_filtered.sort_values(by=["fecha_requisicion", "_sort_num"], ascending=[True, True])
-        elif "Mayor a menor" in sort_order:
+        df_filtered["_sort_sol"] = df_filtered.get("folio_solicitud", pd.Series("", index=df_filtered.index)).apply(extract_sol_num)
+        df_filtered["_reg_str"] = df_filtered.get("fecha_registro", pd.Series("", index=df_filtered.index)).astype(str)
+
+        if "Últimas subidas" in sort_order:
+            df_filtered = df_filtered.sort_values(by=["_reg_str", "_sort_sol", "fecha_requisicion", "_sort_num"], ascending=[False, False, False, False])
+        elif "Fecha de Documento: Más recientes primero" in sort_order or "Más recientes primero" in sort_order:
+            df_filtered = df_filtered.sort_values(by=["fecha_requisicion", "_reg_str", "_sort_sol", "_sort_num"], ascending=[False, False, False, False])
+        elif "Fecha de Documento: Más antiguas primero" in sort_order or "Más antiguas primero" in sort_order:
+            df_filtered = df_filtered.sort_values(by=["fecha_requisicion", "_reg_str", "_sort_sol", "_sort_num"], ascending=[True, True, True, True])
+        elif "Consecutivo Interno: Mayor a menor" in sort_order:
+            df_filtered = df_filtered.sort_values(by=["_sort_sol", "_reg_str", "fecha_requisicion"], ascending=[False, False, False])
+        elif "Consecutivo Interno: Menor a mayor" in sort_order:
+            df_filtered = df_filtered.sort_values(by=["_sort_sol", "_reg_str", "fecha_requisicion"], ascending=[True, True, True])
+        elif "Folio Oficial: Mayor a menor" in sort_order:
             df_filtered = df_filtered.sort_values(by=["_sort_num", "fecha_requisicion"], ascending=[False, False])
-        elif "Menor a mayor" in sort_order:
+        elif "Folio Oficial: Menor a mayor" in sort_order:
             df_filtered = df_filtered.sort_values(by=["_sort_num", "fecha_requisicion"], ascending=[True, True])
 
-        df_filtered = df_filtered.drop(columns=["_sort_num"]).reset_index(drop=True)
+        df_filtered = df_filtered.drop(columns=["_sort_num", "_sort_sol", "_reg_str"]).reset_index(drop=True)
 
         # Leyenda de color si está activo el resaltado
         if "Amarillo" in highlight_mode and ultimas_cargadas_set:
@@ -244,6 +267,7 @@ def render_dashboard():
             display_df = sub_df.reset_index(drop=True).copy()
             
             # Formatear montos con moneda
+            display_df["Interno"] = display_df.get("folio_solicitud", "")
             display_df["Monto ($)"] = display_df["monto_estimado"].apply(lambda v: f"${float(v):,.2f}" if float(v) > 0 else "-")
             display_df["Folio"] = display_df["id_requisicion"]
             display_df["Fecha"] = display_df["fecha_requisicion"]
@@ -254,7 +278,7 @@ def render_dashboard():
             display_df["Estatus Odoo"] = display_df["estatus"]
             display_df["Folio PO"] = display_df["folio_po"].apply(lambda p: p if p else "-")
 
-            cols_to_show = ["Folio", "Fecha", "Estatus Odoo", "Área", "Solicitante", "Descripción", "Cot.", "Monto ($)", "Folio PO"]
+            cols_to_show = ["Interno", "Folio", "Fecha", "Estatus Odoo", "Área", "Solicitante", "Descripción", "Cot.", "Monto ($)", "Folio PO"]
             
             # Aplicar estilo de color a las últimas cargadas (exactamente como en Remisiones #FFF59D)
             if "Amarillo" in highlight_mode:
@@ -274,7 +298,8 @@ def render_dashboard():
                 selection_mode="multi-row",
                 key=table_key,
                 column_config={
-                    "Folio": st.column_config.TextColumn("Folio", width="small"),
+                    "Interno": st.column_config.TextColumn("Interno (SOL)", width="small", help="Consecutivo Interno Planta Metales (SOL-XXXXX)"),
+                    "Folio": st.column_config.TextColumn("Folio (REQ)", width="small", help="Folio Oficial de Requisición"),
                     "Fecha": st.column_config.TextColumn("Fecha", width="small"),
                     "Estatus Odoo": st.column_config.TextColumn("Estatus", width="medium"),
                     "Área": st.column_config.TextColumn("Área de Impacto", width="small"),
@@ -438,6 +463,7 @@ def render_dashboard():
                 preview_list = []
                 for r in selected_records:
                     preview_list.append({
+                        "Interno": r.get("folio_solicitud", ""),
                         "Folio": r.get("id_requisicion"),
                         "Fecha": r.get("fecha_requisicion"),
                         "Área": r.get("area_impacto"),
@@ -456,11 +482,17 @@ def render_dashboard():
         st.markdown("##### 🔍 Inspeccionar Expediente Digital y Descargar Documentos")
         c_sel, _ = st.columns([2.5, 1.5])
         with c_sel:
+            display_labels = {}
+            for _, r in df_filtered.iterrows():
+                sol_p = f"[{r.get('folio_solicitud', '')}] " if r.get('folio_solicitud') else ""
+                display_labels[r["id_requisicion"]] = f"{sol_p}{r['id_requisicion']} — {r.get('descripcion_breve', '')[:45]}"
+
             all_options = df_filtered["id_requisicion"].tolist()
             if all_options:
                 selected_from_list = st.selectbox(
                     "Selecciona una Requisición para ver su expediente completo:",
                     options=all_options,
+                    format_func=lambda x: display_labels.get(x, x),
                     index=0,
                     key="sel_dossier_from_list"
                 )
@@ -506,6 +538,7 @@ def render_dashboard():
                 else:
                     for _, row in items_in_state.iterrows():
                         req_id = row["id_requisicion"]
+                        sol_id = row.get("folio_solicitud", "")
                         desc = row["descripcion_breve"]
                         sol = row["solicitante"]
                         area = row["area_impacto"]
@@ -513,11 +546,12 @@ def render_dashboard():
                         monto = row["monto_po"] if state_key in [ESTATUS_PO_GENERADA, ESTATUS_ARCHIVADO] and row["monto_po"] > 0 else row["monto_estimado"]
                         
                         po_badge = f"""<div style="font-size:11px; color:#047857; font-weight:bold; margin-top:4px;">PO: {row['folio_po']}</div>""" if row.get("folio_po") else ""
+                        sol_badge = f"""<span style="font-size:10.5px; font-weight:800; color:#0F172A; background-color:#F1F5F9; border:1px solid #CBD5E1; padding:2px 6px; border-radius:4px; margin-right:6px;">{sol_id}</span>""" if sol_id else ""
 
                         st.markdown(f"""
                         <div style="background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:6px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-weight:900; font-size:13px; color:#0F172A;">{req_id}</span>
+                                <div>{sol_badge}<span style="font-weight:900; font-size:13px; color:#EC2024;">{req_id}</span></div>
                                 <span style="background-color:#EFF6FF; color:#1E40AF; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">{area}</span>
                             </div>
                             <div style="font-size:12px; color:#334155; margin-top:6px; font-weight:600; line-height:1.3;">

@@ -6,6 +6,7 @@ Capa de Persistencia y Base de Datos Excel (.xlsx) con Pandas
 """
 
 import os
+import re
 import shutil
 import zipfile
 import io
@@ -37,6 +38,7 @@ from config import (
 # Estructura de Columnas para BD_Requisiciones.xlsx
 COLUMNAS_REQUISICIONES = [
     "id_requisicion",
+    "folio_solicitud",
     "fecha_requisicion",
     "solicitante",
     "area_impacto",
@@ -248,6 +250,9 @@ def load_requisiciones() -> pd.DataFrame:
     init_databases()
     try:
         df = pd.read_excel(EXCEL_REQUISICIONES_PATH, dtype=str)
+        # Asegurar columna de consecutivo interno
+        if "folio_solicitud" not in df.columns:
+            df["folio_solicitud"] = ""
         # Asegurar columnas numéricas
         if "monto_estimado" in df.columns:
             df["monto_estimado"] = pd.to_numeric(df["monto_estimado"], errors="coerce").fillna(0.0)
@@ -274,6 +279,25 @@ def get_requisicion_by_id(req_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def get_next_sol_consecutivo(df: Optional[pd.DataFrame] = None) -> str:
+    """Calcula y devuelve el siguiente consecutivo interno SOL-XXXXX para Planta Metales."""
+    if df is None:
+        df = load_requisiciones()
+    max_num = 0
+    if not df.empty and "folio_solicitud" in df.columns:
+        for val in df["folio_solicitud"].dropna():
+            val_str = str(val).strip()
+            match = re.search(r'\d+', val_str)
+            if match:
+                num = int(match.group(0))
+                if num > max_num:
+                    max_num = num
+    elif not df.empty:
+        max_num = len(df)
+    next_num = max_num + 1
+    return f"SOL-{next_num:05d}"
+
+
 def save_requisicion(data: Dict[str, Any]) -> bool:
     """Inserta o actualiza una requisición en BD_Requisiciones.xlsx."""
     init_databases()
@@ -292,16 +316,23 @@ def save_requisicion(data: Dict[str, Any]) -> bool:
     if norm_id in df["id_requisicion"].values:
         # Actualización
         idx = df[df["id_requisicion"] == norm_id].index[0]
-        # Preservar fecha de registro original
+        # Preservar fecha de registro y folio interno original
         original_created = df.at[idx, "fecha_registro"]
         if original_created:
             record["fecha_registro"] = original_created
+        if not record.get("folio_solicitud") and "folio_solicitud" in df.columns:
+            record["folio_solicitud"] = df.at[idx, "folio_solicitud"]
+        if not record.get("folio_solicitud"):
+            record["folio_solicitud"] = get_next_sol_consecutivo(df)
+
         for k, v in record.items():
             df.at[idx, k] = v
     else:
         # Nuevo registro
         if not record.get("fecha_registro"):
             record["fecha_registro"] = now_str
+        if not record.get("folio_solicitud"):
+            record["folio_solicitud"] = get_next_sol_consecutivo(df)
         df = pd.concat([df, pd.DataFrame([record])], ignore_index=True)
 
     _atomic_write_excel(df, EXCEL_REQUISICIONES_PATH)
