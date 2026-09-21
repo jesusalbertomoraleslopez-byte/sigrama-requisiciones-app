@@ -613,22 +613,16 @@ def render_dashboard():
 
             with col_acc_right:
                 usuario_actual_firma = st.session_state.get("usuario") or "Jesús Alberto Morales López"
-                correo_remitente_auto = get_user_email(usuario_actual_firma)
-                de_default = f"{usuario_actual_firma} <{correo_remitente_auto}>"
 
-                cf0, cf1 = st.columns(2)
-                with cf0:
-                    eml_from = st.text_input("De (Remitente que descarga):", value=de_default, key="eml_from_batch", help="Cuenta corporativa de la persona que descarga y envía el correo desde Outlook.")
+                cf1, cf2 = st.columns(2)
                 with cf1:
                     eml_to = st.text_input("Para (Destinatario):", value="Ing. Lorena Hernandez <lhernandez@sigrama.com.mx>", key="eml_to_batch")
-
-                cf2, cf3 = st.columns(2)
                 with cf2:
                     eml_cc = st.text_input("Con copia (Cc):", value="Bryan Alejandro Flores Mancinas <bryan.mancinas@sigrama.com.mx>; Cruz Eduardo Carreon Rios <cruz.carreon@sigrama.com.mx>; jose.fernandez@sigrama.com.mx; Luis Alfredo Quintana Palma <luis.quintana@sigrama.com.mx>; Jesus Alberto Morales Lopez <jesus.morales@sigrama.com.mx>", key="eml_cc_batch")
-                with cf3:
-                    eml_firma = st.text_input("Firma Solicitante:", value=usuario_actual_firma, key="eml_firma_batch")
 
-                cf4, cf5, cf6 = st.columns([1.1, 0.9, 1.2])
+                cf3, cf4, cf5, cf6 = st.columns([1.2, 1.0, 0.8, 1.2])
+                with cf3:
+                    eml_firma = st.text_input("Firma Solicitante:", value=usuario_actual_firma, key="eml_firma_batch", help="Nombre que aparece en la firma y pie del cuerpo del correo.")
                 with cf4:
                     eml_planta = st.selectbox(
                         "🏭 Planta:",
@@ -660,7 +654,7 @@ def render_dashboard():
                     destinatario_to=eml_to,
                     destinatarios_cc=eml_cc,
                     solicitante_remitente=eml_firma,
-                    remitente_from=eml_from,
+                    remitente_from=None,  # Omitido para que Outlook asigne la cuenta predeterminada de la máquina
                     planta=eml_planta,
                     dias_autorizacion=int(eml_dias_aut),
                     plazo_po=eml_plazo_po

@@ -139,8 +139,10 @@ def build_requisition_eml(
             cc_strings.append(c["correo"])
     msg["Cc"] = "; ".join(cc_strings)
 
-    solicitante = req_data.get("solicitante", "Jesus Alberto Morales Lopez")
-    msg["From"] = format_from_header(remitente_from or solicitante)
+    # Si se especifica remitente_from explícitamente se agrega, de lo contrario NO se incluye 'From'
+    # para que Outlook asigne en automático la cuenta predeterminada de la máquina que abre el borrador .eml.
+    if remitente_from and str(remitente_from).strip():
+        msg["From"] = format_from_header(remitente_from)
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain="sigrama.com.mx")
     msg["X-Priority"] = "1" if req_data.get("prioridad") == "Urgente" else "3"
@@ -156,6 +158,7 @@ def build_requisition_eml(
     msg.attach(msg_alt)
 
     # 4. Datos del Cuerpo
+    solicitante = req_data.get("solicitante", "Jesus Alberto Morales Lopez")
     justificacion = req_data.get("justificacion", "Sin observaciones adicionales.")
     prioridad = req_data.get("prioridad", "Media")
     monto_est = float(req_data.get("monto_estimado", 0.0))
@@ -541,7 +544,10 @@ def build_consolidated_requisitions_eml(
         cc_header = "; ".join([f"{c['nombre']} <{c['correo']}>" for c in DESTINATARIOS_CC_DEFAULT])
 
     msg["Cc"] = cc_header
-    msg["From"] = format_from_header(remitente_from or solicitante_remitente)
+    # Si se especifica remitente_from explícitamente se agrega, de lo contrario NO se incluye 'From'
+    # para que Outlook asigne en automático la cuenta predeterminada de la máquina que abre el borrador .eml.
+    if remitente_from and str(remitente_from).strip():
+        msg["From"] = format_from_header(remitente_from)
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain="sigrama.com.mx")
     msg["X-Unsent"] = "1"

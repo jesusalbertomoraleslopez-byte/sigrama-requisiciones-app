@@ -427,7 +427,7 @@ def render_requisition_wizard():
         pdf_requisicion_bytes=data_state.get("pdf_uploaded_bytes"),
         pdf_requisicion_name=f"requisicion_{norm_req_id}.pdf",
         cotizaciones_attachments=quote_attachments,
-        remitente_from=remitente_usuario,
+        remitente_from=None,  # Omitido para que Outlook asigne la cuenta predeterminada de la máquina
         planta=st.session_state.get("app_planta_activa", "Planta Metales"),
         dias_autorizacion=int(wiz_dias_aut),
         plazo_po=wiz_plazo_po
