@@ -90,12 +90,12 @@ if FAVICON_PATH.exists():
 embed_css = """
 <style>
     /* Modo incrustado en Concentradora SIGRAMA */
-    header[data-testid="stHeader"], footer, div[data-testid="stDecoration"] {
+    header[data-testid="stHeader"], footer, div[data-testid="stDecoration"], div[class*="manageApp"], div[class*="ManageApp"], button[title*="Manage app"], [data-testid="stStatusWidget"] {
         display: none !important;
     }
     .block-container {
-        padding-top: 1.2rem !important;
-        padding-bottom: 2rem !important;
+        padding-top: 0.8rem !important;
+        padding-bottom: 6.5rem !important;
     }
 </style>
 """
