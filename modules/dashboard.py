@@ -347,6 +347,12 @@ def render_dashboard():
             </div>
             """, unsafe_allow_html=True)
 
+        st.markdown("""
+        <div style="background-color:#F0FDF4; border:1px solid #BBF7D0; border-left:4px solid #16A34A; padding:8px 14px; border-radius:6px; margin:4px 0 10px 0; font-size:12.5px; color:#14532D; display:flex; align-items:center; gap:8px;">
+            <span>✏️ <strong>Edición Directa en la Tabla:</strong> Puedes hacer doble clic en cualquier celda de <strong>Descripción</strong> para escribir directamente, o hacer clic en <strong>Área de Impacto</strong> para elegir el área deseada (Producción, Laser, Lijado, Doblez, Pintura, Embarque, Calidad, Inspección, etc.). Los cambios se guardan automáticamente en la base de datos.</span>
+        </div>
+        """, unsafe_allow_html=True)
+
         # Función auxiliar para renderizar una tabla de registros estilo Odoo con casillas de verificación
         def render_odoo_table_section(sub_df: pd.DataFrame, group_title: str = "", table_key: str = "tabla_odoo_main"):
             if group_title:
@@ -372,8 +378,9 @@ def render_dashboard():
             display_df["Cot."] = display_df["num_cotizaciones"].astype(int)
             display_df["Estatus Odoo"] = display_df["estatus"]
             display_df["Folio PO"] = display_df["folio_po"].apply(lambda p: p if p else "-")
+            display_df.insert(0, "Sel.", False)
 
-            cols_to_show = ["Interno", "Folio", "Fecha", "Estatus Odoo", "Área", "Solicitante", "Descripción", "Cot.", "Monto ($)", "Folio PO"]
+            cols_to_show = ["Sel.", "Interno", "Folio", "Fecha", "Estatus Odoo", "Área", "Solicitante", "Descripción", "Cot.", "Monto ($)", "Folio PO"]
             
             # Aplicar estilo de color a las últimas cargadas (exactamente como en Remisiones #FFF59D)
             if "Amarillo" in highlight_mode:
@@ -384,26 +391,54 @@ def render_dashboard():
             else:
                 data_to_render = display_df[cols_to_show]
 
-            # Renderizar con st.dataframe interactivo con selección múltiple mediante casillas
-            sel_grid = st.dataframe(
+            # Renderizar con st.data_editor: permite editar 'Descripción' y 'Área' directamente en las celdas
+            edited_table = st.data_editor(
                 data_to_render,
                 use_container_width=True,
                 hide_index=True,
-                on_select="rerun",
-                selection_mode="multi-row",
                 key=table_key,
                 column_config={
-                    "Interno": st.column_config.TextColumn("Interno (SOL)", width="small", help="Consecutivo Interno Planta Metales (SOL-XXXXX)"),
-                    "Folio": st.column_config.TextColumn("Folio (REQ)", width="small", help="Folio Oficial de Requisición"),
-                    "Fecha": st.column_config.TextColumn("Fecha", width="small"),
-                    "Estatus Odoo": st.column_config.TextColumn("Estatus", width="medium"),
-                    "Área": st.column_config.TextColumn("Área de Impacto", width="small"),
-                    "Cot.": st.column_config.NumberColumn("Cot.", width="small"),
-                    "Monto ($)": st.column_config.TextColumn("Monto Estimado", width="small"),
-                    "Folio PO": st.column_config.TextColumn("Orden (PO)", width="small")
+                    "Sel.": st.column_config.CheckboxColumn("✉️", help="Marca la casilla para incluir en el paquete de correo .eml", default=False, width="small"),
+                    "Interno": st.column_config.TextColumn("Interno (SOL)", width="small", help="Consecutivo Interno Planta Metales (SOL-XXXXX)", disabled=True),
+                    "Folio": st.column_config.TextColumn("Folio (REQ)", width="small", help="Folio Oficial de Requisición", disabled=True),
+                    "Fecha": st.column_config.TextColumn("Fecha", width="small", disabled=True),
+                    "Estatus Odoo": st.column_config.TextColumn("Estatus", width="medium", disabled=True),
+                    "Área": st.column_config.SelectboxColumn("Área de Impacto", width="medium", options=areas_list, required=True, help="Haz clic para seleccionar el área de la requisición"),
+                    "Solicitante": st.column_config.TextColumn("Solicitante", width="medium", disabled=True),
+                    "Descripción": st.column_config.TextColumn("Descripción", width="large", required=True, help="Haz doble clic o escribe para modificar la descripción directamente"),
+                    "Cot.": st.column_config.NumberColumn("Cot.", width="small", disabled=True),
+                    "Monto ($)": st.column_config.TextColumn("Monto Estimado", width="small", disabled=True),
+                    "Folio PO": st.column_config.TextColumn("Orden (PO)", width="small", disabled=True)
                 }
             )
-            return sel_grid, display_df
+
+            # Detectar y guardar cambios automáticos realizados directamente en la tabla
+            edits_saved = []
+            if isinstance(edited_table, pd.DataFrame) and len(edited_table) == len(display_df):
+                for i in range(len(display_df)):
+                    orig_d = str(display_df.iloc[i]["Descripción"] or "").strip()
+                    new_d = str(edited_table.iloc[i]["Descripción"] or "").strip()
+                    orig_a = str(display_df.iloc[i]["Área"] or "").strip()
+                    new_a = str(edited_table.iloc[i]["Área"] or "").strip()
+
+                    if orig_d != new_d or orig_a != new_a:
+                        f_id = display_df.iloc[i]["Folio"]
+                        s_id = display_df.iloc[i]["Interno"]
+                        update_requisicion_detalles(f_id, nueva_descripcion=new_d, nueva_area=new_a)
+                        edits_saved.append(f"{s_id or f_id}")
+
+            if edits_saved:
+                st.toast(f"✅ Guardado en base de datos: {', '.join(edits_saved)}", icon="💾")
+                st.rerun()
+
+            # Extraer folios con casilla seleccionada para el panel de correo
+            sel_folios = []
+            if isinstance(edited_table, pd.DataFrame) and "Sel." in edited_table.columns:
+                for i in range(len(edited_table)):
+                    if bool(edited_table.iloc[i]["Sel."]) is True:
+                        sel_folios.append(edited_table.iloc[i]["Folio"])
+
+            return sel_folios, display_df
 
         selected_folios = []
 
@@ -413,53 +448,29 @@ def render_dashboard():
                 subset = df_filtered[df_filtered["estatus"] == est_name]
                 if not subset.empty:
                     with st.expander(f"📁 {est_name} ({len(subset)}) — Subtotal: ${subset['monto_estimado'].sum():,.2f} MXN", expanded=(est_name == ESTATUS_PENDIENTE_AUTORIZACION or est_name == ESTATUS_ESPERA_COTIZACION)):
-                        sel_g, d_df = render_odoo_table_section(subset, table_key=f"tabla_odoo_estatus_{idx_grp}")
-                        s_idx = []
-                        if isinstance(sel_g, dict):
-                            s_idx = sel_g.get("selection", {}).get("rows", [])
-                        elif hasattr(sel_g, "selection") and hasattr(sel_g.selection, "rows"):
-                            s_idx = sel_g.selection.rows
-                        for i in s_idx:
-                            selected_folios.append(d_df.iloc[i]["Folio"])
+                        sel_grp_folios, _ = render_odoo_table_section(subset, table_key=f"tabla_odoo_estatus_{idx_grp}")
+                        selected_folios.extend(sel_grp_folios)
 
         elif group_by == "Área de Impacto":
             for idx_grp, area_name in enumerate(sorted(df_filtered["area_impacto"].unique())):
                 subset = df_filtered[df_filtered["area_impacto"] == area_name]
                 if not subset.empty:
                     with st.expander(f"🎯 {area_name} ({len(subset)}) — Subtotal: ${subset['monto_estimado'].sum():,.2f} MXN", expanded=True):
-                        sel_g, d_df = render_odoo_table_section(subset, table_key=f"tabla_odoo_area_{idx_grp}")
-                        s_idx = []
-                        if isinstance(sel_g, dict):
-                            s_idx = sel_g.get("selection", {}).get("rows", [])
-                        elif hasattr(sel_g, "selection") and hasattr(sel_g.selection, "rows"):
-                            s_idx = sel_g.selection.rows
-                        for i in s_idx:
-                            selected_folios.append(d_df.iloc[i]["Folio"])
+                        sel_grp_folios, _ = render_odoo_table_section(subset, table_key=f"tabla_odoo_area_{idx_grp}")
+                        selected_folios.extend(sel_grp_folios)
 
         elif group_by == "Solicitante":
             for idx_grp, sol_name in enumerate(sorted(df_filtered["solicitante"].unique())):
                 subset = df_filtered[df_filtered["solicitante"] == sol_name]
                 if not subset.empty:
                     with st.expander(f"👤 {sol_name} ({len(subset)}) — Subtotal: ${subset['monto_estimado'].sum():,.2f} MXN", expanded=False):
-                        sel_g, d_df = render_odoo_table_section(subset, table_key=f"tabla_odoo_sol_{idx_grp}")
-                        s_idx = []
-                        if isinstance(sel_g, dict):
-                            s_idx = sel_g.get("selection", {}).get("rows", [])
-                        elif hasattr(sel_g, "selection") and hasattr(sel_g.selection, "rows"):
-                            s_idx = sel_g.selection.rows
-                        for i in s_idx:
-                            selected_folios.append(d_df.iloc[i]["Folio"])
+                        sel_grp_folios, _ = render_odoo_table_section(subset, table_key=f"tabla_odoo_sol_{idx_grp}")
+                        selected_folios.extend(sel_grp_folios)
 
         else:
             # Lista plana directa
-            sel_g, d_df = render_odoo_table_section(df_filtered, table_key="tabla_odoo_master_selection")
-            s_idx = []
-            if isinstance(sel_g, dict):
-                s_idx = sel_g.get("selection", {}).get("rows", [])
-            elif hasattr(sel_g, "selection") and hasattr(sel_g.selection, "rows"):
-                s_idx = sel_g.selection.rows
-            for i in s_idx:
-                selected_folios.append(d_df.iloc[i]["Folio"])
+            sel_master_folios, _ = render_odoo_table_section(df_filtered, table_key="tabla_odoo_master_selection")
+            selected_folios.extend(sel_master_folios)
 
         # Barra de pie de tabla estilo Odoo (Totales)
         st.markdown(f"""

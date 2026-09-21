@@ -85,11 +85,20 @@ STATUS_CONFIG = {
 # Catálogos Estándar de la Industria e Industria SIGRAMA S.A. de C.V.
 AREAS_IMPACTO_DEFAULT = [
     "Materiales",
+    "Producción",
+    "Laser",
+    "Lijado",
+    "Doblez",
+    "Pintura",
+    "Embarque",
+    "Calidad",
+    "Inspección",
+    "Herramientas",
+    "Maquinaria",
     "Mano de Obra",
     "Supervisión",
     "Gastos Generales",
-    "Herramientas",
-    "Maquinaria"
+    "Refacciones"
 ]
 
 SOLICITANTES_DEFAULT = [
