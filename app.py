@@ -446,30 +446,18 @@ def main():
     u_display = st.session_state.get("usuario") or sso_user
     r_display = st.session_state.get("rol") or sso_role
     if u_display:
-        user_header_badge = f"""
-            <span style="background-color:#F1F5F9; color:#0F172A; border:1px solid #CBD5E1; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:700; font-family:'Montserrat', sans-serif; margin-right:8px;">
-                👤 {u_display} ({r_display})
-            </span>
-        """
+        user_header_badge = f'<span style="background-color:#F1F5F9; color:#0F172A; border:1px solid #CBD5E1; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:700; font-family:\'Montserrat\', sans-serif; margin-right:8px;">👤 {u_display} ({r_display})</span>'
 
-    st.markdown(f"""
-    <div style="background-color:#FFFFFF; border-bottom:3px solid #EC2024; border-radius:8px; padding:14px 22px; margin-bottom:18px; box-shadow:0 2px 6px rgba(0,0,0,0.03); display:flex; justify-content:space-between; align-items:center;">
-        <div>
-            <div style="font-size:19px; font-weight:900; color:#111111; letter-spacing:0.5px; font-family:'Montserrat', sans-serif;">
-                INDUSTRIA SIGRAMA S.A. DE C.V.
-            </div>
-            <div style="font-size:12px; color:#64748B; font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-top:2px;">
-                Módulo Central de Control y Seguimiento de Requisiciones de Compra
-            </div>
-        </div>
-        <div style="display:flex; align-items:center;">
-            {user_header_badge}
-            <span style="background-color:#FEF2F2; color:#DC2626; border:1px solid #FECACA; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:800; letter-spacing:0.5px; font-family:'Montserrat', sans-serif;">
-                PLANTA JUAN ESCUTIA
-            </span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    header_html = (
+        '<div style="background-color:#FFFFFF; border-bottom:3px solid #EC2024; border-radius:8px; padding:14px 22px; margin-bottom:18px; box-shadow:0 2px 6px rgba(0,0,0,0.03); display:flex; justify-content:space-between; align-items:center;">'
+        '<div>'
+        '<div style="font-size:19px; font-weight:900; color:#111111; letter-spacing:0.5px; font-family:\'Montserrat\', sans-serif;">INDUSTRIA SIGRAMA S.A. DE C.V.</div>'
+        '<div style="font-size:12px; color:#64748B; font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-top:2px;">Módulo Central de Control y Seguimiento de Requisiciones de Compra</div>'
+        '</div>'
+        f'<div style="display:flex; align-items:center;">{user_header_badge}<span style="background-color:#FEF2F2; color:#DC2626; border:1px solid #FECACA; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:800; letter-spacing:0.5px; font-family:\'Montserrat\', sans-serif;">PLANTA JUAN ESCUTIA</span></div>'
+        '</div>'
+    )
+    st.markdown(header_html, unsafe_allow_html=True)
 
     # =========================================================================
     # ENRUTAMIENTO MODULAR
