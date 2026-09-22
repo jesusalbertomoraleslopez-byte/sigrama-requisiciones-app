@@ -251,6 +251,9 @@ Industria Sigrama S.A. de C.V.
     sol_badge_header = f"""<div style="font-size:12px; color:#EC2024; margin-top:3px; font-weight:800; font-family:'Montserrat', sans-serif;">{sol_id}</div>""" if sol_id else ""
 
     # 6. Cuerpo HTML Profesional con Logotipo SIGRAMA exacto como en Remisiones (width="160")
+    # Extraer solo los 5 dígitos del número SAI (REQ-XXXXX → XXXXX)
+    req_num_only = req_id.replace("REQ-", "").replace("REQ", "").strip()
+
     html_body = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -259,7 +262,22 @@ Industria Sigrama S.A. de C.V.
 </head>
 <body style="font-family:'Segoe UI', Arial, sans-serif; background-color:#F8FAFC; margin:0; padding:20px; color:#1E293B; line-height:1.6;">
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:750px; margin:0 auto; background-color:#FFFFFF; border-radius:8px; overflow:hidden; box-shadow:0 3px 12px rgba(0,0,0,0.06); border:1px solid #E2E8F0;">
-        
+
+        <!-- BANDA SUPERIOR: NÚMERO SAI (MUY GRANDE) -->
+        <tr>
+            <td style="background-color:#0F172A; padding:18px 30px; text-align:center;">
+                <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:2px; margin-bottom:4px;">
+                    No. de Requisición · Sistema SAI
+                </div>
+                <div style="font-size:64px; font-weight:900; color:#FFFFFF; font-family:'Montserrat', 'Segoe UI', Arial, sans-serif; letter-spacing:6px; line-height:1;">
+                    {req_num_only}
+                </div>
+                <div style="font-size:12px; font-weight:600; color:#EC2024; margin-top:6px; letter-spacing:1px;">
+                    {req_id}
+                </div>
+            </td>
+        </tr>
+
         <!-- ENCABEZADO CON LOGOTIPO SIGRAMA (RÉPLICA EXACTA DE APP DE REMISIONES) -->
         <tr>
             <td style="padding:20px 30px 15px 30px; border-bottom:4px solid #EC2024; background-color:#FFFFFF;">
@@ -589,6 +607,17 @@ def build_consolidated_requisitions_eml(
     table_rows_str = "".join(rows_html)
     solicitante_firma = solicitante_remitente or "Jesús Alberto Morales López"
 
+    # Preparar números SAI (solo dígitos) para la banda superior
+    req_nums_only = [str(r.get("id_requisicion", "")).replace("REQ-", "").replace("REQ", "").strip() for r in reqs_list]
+    if len(req_nums_only) == 1:
+        sai_display = req_nums_only[0]
+        sai_label = f"REQ-{req_nums_only[0]}"
+        sai_font_size = "64px"
+    else:
+        sai_display = "  ·  ".join(req_nums_only)
+        sai_label = "  ·  ".join([f"REQ-{n}" for n in req_nums_only])
+        sai_font_size = "40px" if len(req_nums_only) <= 3 else "28px"
+
     # 5. Cuerpo HTML Consolidado
     html_body = f"""<!DOCTYPE html>
 <html lang="es">
@@ -598,6 +627,22 @@ def build_consolidated_requisitions_eml(
 </head>
 <body style="margin:0; padding:0; background-color:#F1F5F9; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-font-smoothing:antialiased;">
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:850px; margin:25px auto; background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:8px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+
+        <!-- BANDA SUPERIOR: NÚMERO(S) SAI (MUY GRANDE) -->
+        <tr>
+            <td style="background-color:#0F172A; padding:20px 32px; text-align:center;">
+                <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;">
+                    No. de Requisición · Sistema SAI
+                </div>
+                <div style="font-size:{sai_font_size}; font-weight:900; color:#FFFFFF; font-family:'Montserrat', 'Segoe UI', Arial, sans-serif; letter-spacing:6px; line-height:1.1;">
+                    {sai_display}
+                </div>
+                <div style="font-size:12px; font-weight:600; color:#EC2024; margin-top:8px; letter-spacing:1px;">
+                    {sai_label}
+                </div>
+            </td>
+        </tr>
+
         <!-- ENCABEZADO INSTITUCIONAL SIGRAMA -->
         <tr>
             <td style="background-color:#FFFFFF; padding:22px 32px; border-bottom:4px solid #EC2024; text-align:left;">
