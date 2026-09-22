@@ -1318,38 +1318,41 @@ def render_dashboard(force_view: Optional[str] = None):
 
                         sol_clean = re.sub(r'\(.*?\)', '', sol).strip()
                         desc_clean = desc.replace("\n", " ").strip()
-                        # Permitir descripción amplia y legible (hasta 120 caracteres)
-                        desc_preview = desc_clean[:120] + ("..." if len(desc_clean) > 120 else "")
+                        desc_preview = desc_clean[:115] + ("..." if len(desc_clean) > 115 else "")
 
-                        folio_line = f"📌 **{req_id}**"
-                        if sol_id:
-                            folio_line += f"   •   `{sol_id}`"
+                        sol_short = sol_clean[:22]
+                        area_text = f"📍 {area}" if area else ""
+                        po_badge = f'<span style="background-color:#E2E8F0; color:#334155; font-size:10.5px; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:6px;">PO: {row["folio_po"]}</span>' if row.get("folio_po") else ""
+                        sol_badge = f'<span style="background-color:rgba(0,0,0,0.07); color:#0F172A; font-size:11px; font-weight:800; padding:2px 6px; border-radius:4px;">{sol_id}</span>' if sol_id else ""
 
-                        monto_line = f"💰 **${float(monto):,.2f} {moneda}**"
-                        if row.get("folio_po"):
-                            monto_line += f"   •   📝 **{row['folio_po']}**"
-
-                        sol_line = f"👤 {sol_clean[:26]}"
-                        if area:
-                            sol_line += f"   •   📍 {area}"
-
-                        meta_line = f"{stars} {prioridad}   •   📑 {num_cot} cotizaciones"
-
-                        card_text = f"{folio_line}\n\n**{desc_preview}**\n\n{monto_line}\n\n{sol_line}\n\n{meta_line}"
-
-                        # Marcador para vinculación CSS precisa y estilo dinámico del Post-it
-                        st.markdown(f"""
-                        <div class="kanban-marker marker-{palette_match['id']}" style="height:0px; min-height:0px; margin:0px; padding:0px; line-height:0px; overflow:hidden;"></div>
-                        <style>
-                        div:has(.marker-{palette_match['id']}) + div button,
-                        div[data-testid="stElementContainer"]:has(.marker-{palette_match['id']}) + div[data-testid="stElementContainer"] button {{
-                            background-color: {card_bg} !important;
-                            border: 1.5px solid {card_border} !important;
-                            border-top: 8px solid {card_top} !important;
-                        }}
-                        </style>
-                        """, unsafe_allow_html=True)
-                        if st.button(card_text, key=f"btn_postit_{req_id}", use_container_width=True, help=f"Clic para abrir expediente completo de {req_id}"):
+                        card_html = f"""
+                        <div class="odoo-postit-card" style="background-color:{card_bg} !important; border:1.5px solid {card_border} !important; border-top:8px solid {card_top} !important;">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <span style="font-size:14px; font-weight:900; color:#0F172A;">📌 {req_id}</span>
+                                    {sol_badge}
+                                </div>
+                                <div style="font-size:12.5px; font-weight:700; color:#1E293B; line-height:1.35; margin-bottom:8px;">
+                                    {desc_preview}
+                                </div>
+                            </div>
+                            <div>
+                                <div style="font-size:14px; font-weight:900; color:#059669; margin-bottom:6px; display:flex; align-items:center;">
+                                    <span>💰 ${float(monto):,.2f} {moneda}</span>
+                                    {po_badge}
+                                </div>
+                                <div style="font-size:11.5px; color:#475569; margin-bottom:6px;">
+                                    👤 <strong>{sol_short}</strong> {f"&bull; {area_text}" if area_text else ""}
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#64748B; border-top:1px dashed rgba(0,0,0,0.12); padding-top:6px;">
+                                    <span>{stars} {prioridad}</span>
+                                    <span style="font-weight:700;">📑 {num_cot} cotizaciones</span>
+                                </div>
+                            </div>
+                        </div>
+                        """
+                        st.markdown(card_html, unsafe_allow_html=True)
+                        if st.button(f"👁️ Abrir Expediente {req_id}", key=f"btn_open_{req_id}", use_container_width=True, help=f"Abrir expediente completo de {req_id}"):
                             modal_ver_expediente(req_id)
 
     # =========================================================================

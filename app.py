@@ -229,102 +229,42 @@ st.markdown("""
         font-family: 'Montserrat', sans-serif !important;
     }
 
-    /* Marcador invisible para vincular estilos al botón nativo siguiente */
-    div:has(.kanban-marker),
-    div[data-testid="stElementContainer"]:has(.kanban-marker) {
-        height: 0px !important;
-        min-height: 0px !important;
-        margin: 0px !important;
-        padding: 0px !important;
-        line-height: 0px !important;
-        overflow: hidden !important;
-    }
-
-    /* Tarjetas Post-it Grandes y Unificadas (Botón Nativo Streamlit sin recarga) */
-    div:has(.kanban-marker) + div button,
-    div[data-testid="stElementContainer"]:has(.kanban-marker) + div[data-testid="stElementContainer"] button {
+    /* Tarjetas Post-it Odoo para Kanban */
+    .odoo-postit-card {
+        border-radius: 8px 8px 0 0 !important;
+        padding: 14px 16px !important;
+        margin-bottom: 0px !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.06) !important;
+        transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+        min-height: 155px !important;
         display: flex !important;
         flex-direction: column !important;
-        align-items: flex-start !important;
-        justify-content: flex-start !important;
-        text-align: left !important;
-        width: 100% !important;
-        height: auto !important;
-        min-height: 185px !important;
-        padding: 16px 18px !important;
-        border-radius: 8px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04) !important;
-        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease !important;
-        cursor: pointer !important;
+        justify-content: space-between !important;
+    }
+    .odoo-postit-card:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12) !important;
+    }
+
+    /* Botón integrado de apertura inmediata debajo del Post-it */
+    div.stButton:has(> button[key*="btn_open_"]) > button {
+        border-radius: 0 0 8px 8px !important;
+        border-top: none !important;
+        height: 34px !important;
+        min-height: 34px !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        background-color: #FFFFFF !important;
+        color: #334155 !important;
         margin-bottom: 12px !important;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05) !important;
+        transition: all 0.15s ease !important;
     }
-
-    div:has(.kanban-marker) + div button:hover,
-    div[data-testid="stElementContainer"]:has(.kanban-marker) + div[data-testid="stElementContainer"] button:hover {
-        transform: translateY(-4px) scale(1.015) !important;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16) !important;
+    div.stButton:has(> button[key*="btn_open_"]) > button:hover {
+        background-color: #EC2024 !important;
+        color: #FFFFFF !important;
+        border-color: #EC2024 !important;
     }
-
-    div:has(.kanban-marker) + div button:active,
-    div[data-testid="stElementContainer"]:has(.kanban-marker) + div[data-testid="stElementContainer"] button:active {
-        transform: scale(0.99) !important;
-    }
-
-    div:has(.kanban-marker) + div button div[data-testid="stMarkdownContainer"],
-    div[data-testid="stElementContainer"]:has(.kanban-marker) + div[data-testid="stElementContainer"] button div[data-testid="stMarkdownContainer"] {
-        width: 100% !important;
-        text-align: left !important;
-    }
-
-    div:has(.kanban-marker) + div button p,
-    div[data-testid="stElementContainer"]:has(.kanban-marker) + div[data-testid="stElementContainer"] button p {
-        text-align: left !important;
-        white-space: pre-line !important;
-        word-break: break-word !important;
-        color: #0F172A !important;
-        font-size: 13.5px !important;
-        line-height: 1.55 !important;
-        font-family: 'Questrial', 'Montserrat', -apple-system, sans-serif !important;
-        margin: 0 !important;
-    }
-
-    div:has(.kanban-marker) + div button code,
-    div[data-testid="stElementContainer"]:has(.kanban-marker) + div[data-testid="stElementContainer"] button code {
-        background-color: rgba(0, 0, 0, 0.08) !important;
-        color: #0F172A !important;
-        font-weight: 800 !important;
-        font-size: 11px !important;
-        padding: 2px 6px !important;
-        border-radius: 4px !important;
-    }
-
-    /* Colores Post-it oficiales aplicados directamente a la tarjeta Kanban */
-    div:has(.marker-amarillo) + div button, div[data-testid="stElementContainer"]:has(.marker-amarillo) + div button { background-color: #FEF08A !important; border: 1.5px solid #FDE047 !important; border-top: 8px solid #CA8A04 !important; }
-    div:has(.marker-amarillo) + div button:hover { background-color: #FEF9C3 !important; }
-
-    div:has(.marker-verde) + div button, div[data-testid="stElementContainer"]:has(.marker-verde) + div button { background-color: #BBF7D0 !important; border: 1.5px solid #86EFAC !important; border-top: 8px solid #16A34A !important; }
-    div:has(.marker-verde) + div button:hover { background-color: #DCFCE7 !important; }
-
-    div:has(.marker-azul) + div button, div[data-testid="stElementContainer"]:has(.marker-azul) + div button { background-color: #BAE6FD !important; border: 1.5px solid #7DD3FC !important; border-top: 8px solid #0284C7 !important; }
-    div:has(.marker-azul) + div button:hover { background-color: #E0F2FE !important; }
-
-    div:has(.marker-rosa) + div button, div[data-testid="stElementContainer"]:has(.marker-rosa) + div button { background-color: #FBCFE8 !important; border: 1.5px solid #F9A8D4 !important; border-top: 8px solid #DB2777 !important; }
-    div:has(.marker-rosa) + div button:hover { background-color: #FCE7F3 !important; }
-
-    div:has(.marker-naranja) + div button, div[data-testid="stElementContainer"]:has(.marker-naranja) + div button { background-color: #FED7AA !important; border: 1.5px solid #FDBA74 !important; border-top: 8px solid #EA580C !important; }
-    div:has(.marker-naranja) + div button:hover { background-color: #FFEDD5 !important; }
-
-    div:has(.marker-morado) + div button, div[data-testid="stElementContainer"]:has(.marker-morado) + div button { background-color: #DDD6FE !important; border: 1.5px solid #C4B5FD !important; border-top: 8px solid #7C3AED !important; }
-    div:has(.marker-morado) + div button:hover { background-color: #EDE9FE !important; }
-
-    div:has(.marker-turquesa) + div button, div[data-testid="stElementContainer"]:has(.marker-turquesa) + div button { background-color: #A5F3FC !important; border: 1.5px solid #67E8F9 !important; border-top: 8px solid #0891B2 !important; }
-    div:has(.marker-turquesa) + div button:hover { background-color: #CFFAFE !important; }
-
-    div:has(.marker-rojo) + div button, div[data-testid="stElementContainer"]:has(.marker-rojo) + div button { background-color: #FECACA !important; border: 1.5px solid #FCA5A5 !important; border-top: 8px solid #DC2626 !important; }
-    div:has(.marker-rojo) + div button:hover { background-color: #FEE2E2 !important; }
-
-    div:has(.marker-blanco) + div button, div[data-testid="stElementContainer"]:has(.marker-blanco) + div button { background-color: #FFFFFF !important; border: 1.5px solid #CBD5E1 !important; border-top: 8px solid #94A3B8 !important; }
-    div:has(.marker-blanco) + div button:hover { background-color: #F8FAFC !important; }
 
     /* Tags Odoo (Pills redondeadas) */
     .odoo-pill {
