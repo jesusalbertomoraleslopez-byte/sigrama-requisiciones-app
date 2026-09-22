@@ -58,6 +58,10 @@ from database import (
 from email_generator import (
     build_consolidated_requisitions_eml,
 )
+import streamlit.components.v1 as components
+
+KANBAN_COMPONENT_PATH = Path(__file__).resolve().parent.parent / "components" / "odoo_kanban"
+_odoo_kanban_comp = components.declare_component("odoo_kanban", path=str(KANBAN_COMPONENT_PATH))
 
 
 @st.dialog("📋 Expediente y Ajuste de Requisición", width="large")
@@ -1194,24 +1198,8 @@ def render_dashboard(force_view: Optional[str] = None):
     # VISTA 2: TABLERO KANBAN ESTILO ODOO
     # =========================================================================
     else:
-        st.markdown("##### 🗂️ Tablero Kanban por Fases Operativas (Pipeline Odoo CRM)")
-        st.markdown("""
-        <div style="background-color:#F8FAFC; border-left:4px solid #EC2024; padding:8px 14px; border-radius:4px; margin-bottom:12px; font-size:12.5px; color:#334155;">
-            💡 <b>Pipeline Interactivo:</b> Cambia de estatus en 1 clic con <b>[◀ Regresar]</b> o <b>[▶ Avanzar]</b>, abre el expediente con <b>[👁️]</b>, o reasigna directamente con <b>[⚙️ Mover]</b>.
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("##### 🗂️ Tablero Kanban Interactivo por Fases (Pipeline Odoo CRM)")
         
-        cols_kanban = st.columns(7)
-        column_states = [
-            (ESTATUS_ESPERA_COTIZACION, "1. ⏳ Cotización", cols_kanban[0]),
-            (ESTATUS_PENDIENTE_AUTORIZACION, "2. 📋 Pendiente", cols_kanban[1]),
-            (ESTATUS_AUTORIZADA, "3. 👍 Autorizada", cols_kanban[2]),
-            (ESTATUS_PO_GENERADA, "4. 📝 Con PO", cols_kanban[3]),
-            (ESTATUS_TERMINADA, "5. ✅ Terminada", cols_kanban[4]),
-            (ESTATUS_ARCHIVADA, "6. 📁 Archivada", cols_kanban[5]),
-            (ESTATUS_CONGELADA, "7. 🧊 Congelada", cols_kanban[6]),
-        ]
-
         # En modo Kanban CRM se muestran todas las columnas de fases (respetando búsqueda y filtro de área)
         df_kanban = df_reqs.copy()
         if area_filter != "Todas las Áreas":
@@ -1229,135 +1217,115 @@ def render_dashboard(force_view: Optional[str] = None):
 
         total_pipeline_monto = max(df_kanban["monto_estimado"].sum(), 1.0)
 
-        for state_key, state_title, col in column_states:
-            cfg = STATUS_CONFIG.get(state_key, {})
-            header_color = cfg.get("color", "#0F172A")
-            bg_color = cfg.get("bg_color", "#F8FAFC")
-            
-            # Asegurar coincidencia incluso si viene con nombre antiguo 'Archivado Histórico'
+        # Definición de las 7 fases del Pipeline Odoo
+        STAGE_DEFS = [
+            {"id": "cotizacion", "title": "COTIZACIÓN", "icon": "⏳", "db_status": ESTATUS_ESPERA_COTIZACION, "color": "#F59E0B", "accent": "#D97706"},
+            {"id": "pendiente", "title": "PENDIENTE", "icon": "📄", "db_status": ESTATUS_PENDIENTE_AUTORIZACION, "color": "#EA580C", "accent": "#C2410C"},
+            {"id": "autorizada", "title": "AUTORIZADA", "icon": "🔒", "db_status": ESTATUS_AUTORIZADA, "color": "#EAB308", "accent": "#CA8A04"},
+            {"id": "con_po", "title": "CON PO", "icon": "📝", "db_status": ESTATUS_PO_GENERADA, "color": "#3B82F6", "accent": "#1D4ED8"},
+            {"id": "terminada", "title": "TERMINADA", "icon": "✅", "db_status": ESTATUS_TERMINADA, "color": "#10B981", "accent": "#047857"},
+            {"id": "archivada", "title": "ARCHIVADA", "icon": "📁", "db_status": ESTATUS_ARCHIVADA, "color": "#6B7280", "accent": "#374151"},
+            {"id": "congelada", "title": "CONGELADA", "icon": "🧊", "db_status": ESTATUS_CONGELADA, "color": "#06B6D4", "accent": "#0E7490"},
+        ]
+
+        kanban_columns_payload = []
+        for s_def in STAGE_DEFS:
+            state_key = s_def["db_status"]
             if state_key == ESTATUS_ARCHIVADA:
                 items_in_state = df_kanban[df_kanban["estatus"].isin([ESTATUS_ARCHIVADA, "Archivado Histórico"])]
             else:
                 items_in_state = df_kanban[df_kanban["estatus"] == state_key]
 
-            # Calcular monto total de la columna
             col_total_monto = 0.0
-            if not items_in_state.empty:
-                for _, r in items_in_state.iterrows():
-                    m_po = float(r.get("monto_po", 0.0) or 0.0)
-                    m_est = float(r.get("monto_estimado", 0.0) or 0.0)
-                    if state_key in [ESTATUS_PO_GENERADA, ESTATUS_TERMINADA, ESTATUS_ARCHIVADA] and m_po > 0:
-                        col_total_monto += m_po
-                    else:
-                        col_total_monto += m_est
+            cards = []
+            for _, row in items_in_state.iterrows():
+                req_id = str(row["id_requisicion"])
+                sol_id = str(row.get("folio_solicitud", "") or "").strip()
+                desc = str(row.get("descripcion_breve", "") or "").strip()
+                sol = str(row.get("solicitante", "") or "").strip()
+                area = str(row.get("area_impacto", "") or "").strip()
+                num_cot = int(row.get("num_cotizaciones", 0) or 0)
+                monto = float(row["monto_po"]) if state_key in [ESTATUS_PO_GENERADA, ESTATUS_TERMINADA, ESTATUS_ARCHIVADA] and float(row.get("monto_po", 0) or 0) > 0 else float(row.get("monto_estimado", 0) or 0)
+                moneda = str(row.get("moneda", "MXN") or "MXN")
+                prioridad = str(row.get("prioridad", "Media") or "Media").strip().capitalize()
+                folio_po = str(row.get("folio_po", "") or "").strip()
+                col_total_monto += monto
 
-            bar_pct = min(max(int((col_total_monto / total_pipeline_monto) * 100), 10) if col_total_monto > 0 else 0, 100)
-            
-            with col:
-                # Encabezado estilo Odoo CRM con Título, Contador, Barra de Progreso y Monto Total
-                header_html = (
-                    f'<div style="background-color:#FFFFFF; border:1px solid #E2E8F0; border-top:4px solid {header_color}; border-radius:6px; padding:8px 10px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">'
-                    f'<div style="display:flex; justify-content:space-between; align-items:center;">'
-                    f'<span style="font-weight:800; font-size:11.5px; color:#0F172A; text-transform:uppercase; letter-spacing:0.3px;">{state_title}</span>'
-                    f'<span style="background-color:#F1F5F9; color:#475569; font-size:11px; font-weight:800; padding:1px 6px; border-radius:10px; border:1px solid #E2E8F0;">{len(items_in_state)}</span>'
-                    f'</div>'
-                    f'<div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">'
-                    f'<div style="flex:1; height:4px; background-color:#E2E8F0; border-radius:2px; margin-right:8px; overflow:hidden;">'
-                    f'<div style="width:{bar_pct}%; height:100%; background-color:{header_color}; border-radius:2px;"></div>'
-                    f'</div>'
-                    f'<span style="font-size:11.5px; font-weight:800; color:#0F172A; white-space:nowrap;">${col_total_monto:,.0f}</span>'
-                    f'</div>'
-                    f'</div>'
-                )
-                st.markdown(header_html, unsafe_allow_html=True)
+                color_val = str(row.get("color_etiqueta", "amarillo") or "amarillo").strip().lower()
+                if color_val in ["", "nan", "none"]:
+                    color_val = "amarillo"
 
-                if items_in_state.empty:
-                    st.markdown('<div style="text-align:center; padding:18px 4px; color:#94A3B8; font-size:11px; font-style:italic;">Sin requisiciones</div>', unsafe_allow_html=True)
+                palette_match = next((c for c in PALETA_COLORES_ODOO if c["id"] == color_val or c["color"].lower() == color_val), PALETA_COLORES_ODOO[0])
+
+                sol_clean = re.sub(r'\(.*?\)', '', sol).strip()
+                name_parts = [p for p in sol_clean.split() if p and p.lower() not in ['ing.', 'lic.', 'arq.', 'dr.', 'de', 'del', 'la', 'las', 'los']]
+                if len(name_parts) >= 2:
+                    initials = (name_parts[0][0] + name_parts[1][0]).upper()
+                elif len(name_parts) == 1:
+                    initials = name_parts[0][:2].upper()
                 else:
-                    for _, row in items_in_state.iterrows():
-                        req_id = row["id_requisicion"]
-                        sol_id = str(row.get("folio_solicitud", "") or "").strip()
-                        desc = str(row.get("descripcion_breve", "") or "").strip()
-                        sol = str(row.get("solicitante", "") or "").strip()
-                        area = str(row.get("area_impacto", "") or "").strip()
-                        num_cot = int(row.get("num_cotizaciones", 0) or 0)
-                        monto = float(row["monto_po"]) if state_key in [ESTATUS_PO_GENERADA, ESTATUS_TERMINADA, ESTATUS_ARCHIVADA] and float(row.get("monto_po", 0) or 0) > 0 else float(row.get("monto_estimado", 0) or 0)
-                        moneda = str(row.get("moneda", "MXN") or "MXN")
-                        prioridad = str(row.get("prioridad", "Media") or "Media").strip().capitalize()
+                    initials = "SG"
 
-                        if prioridad in ["Urgente", "Alta"]:
-                            stars = "⭐⭐⭐"
-                        elif prioridad == "Media":
-                            stars = "⭐⭐☆"
-                        else:
-                            stars = "⭐☆☆"
+                avatar_colors = ["#6366F1", "#8B5CF6", "#0D9488", "#D97706", "#DB2777", "#2563EB", "#059669"]
+                avatar_bg = avatar_colors[abs(hash(sol_clean)) % len(avatar_colors)]
 
-                        # Iniciales y color para el avatar circular Odoo
-                        sol_clean = re.sub(r'\(.*?\)', '', sol).strip()
-                        name_parts = [p for p in sol_clean.split() if p and p.lower() not in ['ing.', 'lic.', 'arq.', 'dr.', 'de', 'del', 'la', 'las', 'los']]
-                        if len(name_parts) >= 2:
-                            initials = (name_parts[0][0] + name_parts[1][0]).upper()
-                        elif len(name_parts) == 1:
-                            initials = name_parts[0][:2].upper()
-                        else:
-                            initials = "SG"
+                cards.append({
+                    "id": req_id,
+                    "folio_solicitud": sol_id,
+                    "descripcion": desc[:115] + ("..." if len(desc) > 115 else ""),
+                    "monto": monto,
+                    "moneda": moneda,
+                    "solicitante": sol_clean[:22],
+                    "area": area,
+                    "prioridad": prioridad,
+                    "num_cotizaciones": num_cot,
+                    "folio_po": folio_po,
+                    "color_id": color_val,
+                    "bg_color": palette_match["bg"],
+                    "border_color": palette_match["border"],
+                    "top_color": palette_match.get("top", palette_match["color"]),
+                    "initials": initials,
+                    "avatar_bg": avatar_bg
+                })
 
-                        avatar_colors = ["#6366F1", "#8B5CF6", "#0D9488", "#D97706", "#DB2777", "#2563EB", "#059669"]
-                        avatar_bg = avatar_colors[abs(hash(sol_clean)) % len(avatar_colors)]
+            kanban_columns_payload.append({
+                "id": s_def["id"],
+                "short_title": s_def["title"],
+                "icon": s_def["icon"],
+                "db_status": s_def["db_status"],
+                "color": s_def["color"],
+                "accent": s_def["accent"],
+                "total_monto": col_total_monto,
+                "cards": cards
+            })
 
-                        # Color asignado al Post-it / tarjeta Odoo
-                        color_val = str(row.get("color_etiqueta", "amarillo") or "amarillo").strip().lower()
-                        if color_val in ["", "nan", "none"]:
-                            color_val = "amarillo"
+        st.markdown("""
+        <div style="background: rgba(236,32,36,0.06); border-left: 4px solid #EC2024; padding: 8px 14px; border-radius: 4px; margin-bottom: 10px; font-size: 12.5px; color: #1E293B;">
+            🖐️ <b>Movilidad Total (Drag & Drop):</b> Arrastra y suelta libremente cualquier tarjeta Post-it entre las 7 columnas para cambiar su estatus en tiempo real. Haz doble clic o pulsa <b>[👁️ Abrir Expediente]</b> para ver el expediente completo.
+        </div>
+        """, unsafe_allow_html=True)
 
-                        palette_match = next((c for c in PALETA_COLORES_ODOO if c["id"] == color_val or c["color"].lower() == color_val), PALETA_COLORES_ODOO[0])
-                        card_bg = palette_match["bg"]
-                        card_border = palette_match["border"]
-                        card_top = palette_match.get("top", palette_match["color"])
-                        color_class = f"kanban-color-{palette_match['id']}"
+        # Renderizado del componente Odoo Kanban interactivo con SortableJS
+        kanban_event = _odoo_kanban_comp(
+            columns=kanban_columns_payload,
+            total_count=len(df_kanban),
+            key="odoo_kanban_component_v1"
+        )
 
-                        sol_clean = re.sub(r'\(.*?\)', '', sol).strip()
-                        desc_clean = desc.replace("\n", " ").strip()
-                        desc_preview = desc_clean[:115] + ("..." if len(desc_clean) > 115 else "")
-
-                        sol_short = sol_clean[:22]
-                        area_text = f"📍 {area}" if area else ""
-                        po_badge = f'<span style="background-color:#E2E8F0; color:#334155; font-size:10.5px; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:6px;">PO: {row["folio_po"]}</span>' if row.get("folio_po") else ""
-                        sol_badge = f'<span style="background-color:rgba(0,0,0,0.07); color:#0F172A; font-size:11px; font-weight:800; padding:2px 6px; border-radius:4px;">{sol_id}</span>' if sol_id else ""
-
-                        card_html = (
-                            f'<div class="odoo-postit-card" style="background-color:{card_bg} !important; border:1.5px solid {card_border} !important; border-top:8px solid {card_top} !important;">'
-                            f'<div style="margin-bottom:8px;">'
-                            f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">'
-                            f'<span style="font-size:14px; font-weight:900; color:#0F172A;">📌 {req_id}</span>'
-                            f'{sol_badge}'
-                            f'</div>'
-                            f'<div style="font-size:12.5px; font-weight:700; color:#1E293B; line-height:1.35;">'
-                            f'{desc_preview}'
-                            f'</div>'
-                            f'</div>'
-                            f'<div>'
-                            f'<div style="font-size:14px; font-weight:900; color:#059669; margin-bottom:6px; display:flex; align-items:center;">'
-                            f'<span>💰 ${float(monto):,.2f} {moneda}</span>'
-                            f'{po_badge}'
-                            f'</div>'
-                            f'<div style="font-size:11.5px; color:#475569; margin-bottom:6px;">'
-                            f'👤 <strong>{sol_short}</strong>{f" &bull; {area_text}" if area_text else ""}'
-                            f'</div>'
-                            f'<div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#64748B; border-top:1px dashed rgba(0,0,0,0.15); padding-top:6px;">'
-                            f'<span>{stars} {prioridad}</span>'
-                            f'<span style="font-weight:700;">📑 {num_cot} cotizaciones</span>'
-                            f'</div>'
-                            f'</div>'
-                            f'</div>'
-                        )
-                        if hasattr(st, "html"):
-                            st.html(card_html)
-                        else:
-                            st.markdown(card_html, unsafe_allow_html=True)
-
-                        if st.button(f"👁️ Abrir Expediente {req_id}", key=f"btn_open_{req_id}", use_container_width=True, help=f"Abrir expediente completo de {req_id}"):
-                            modal_ver_expediente(req_id)
+        # Captura y ejecución de eventos interactivos enviados desde SortableJS
+        if kanban_event and isinstance(kanban_event, dict):
+            action = kanban_event.get("action")
+            if action == "move_stage":
+                target_req = kanban_event.get("req_id")
+                new_status = kanban_event.get("new_db_status")
+                if target_req and new_status:
+                    if update_requisicion_detalles(target_req, nuevo_estatus=new_status):
+                        st.toast(f"✅ {target_req} movida a etapa: {new_status}", icon="✅")
+                        st.rerun()
+            elif action == "open_modal":
+                target_req = kanban_event.get("req_id")
+                if target_req:
+                    modal_ver_expediente(target_req)
 
     # =========================================================================
     # EXPEDIENTE DIGITAL PERMANENTE Y DESCARGA EN 1 CLIC
