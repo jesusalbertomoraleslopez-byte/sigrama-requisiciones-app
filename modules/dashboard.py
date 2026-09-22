@@ -9,7 +9,7 @@ import os
 import re
 import datetime
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 import streamlit as st
 import pandas as pd
@@ -131,15 +131,21 @@ def modal_editar_descripcion(default_req_id: str = ""):
             st.rerun()
 
 
-def render_dashboard():
+def render_dashboard(force_view: Optional[str] = None):
     """Renderiza el panel de control ejecutivo con Vista Lista tipo Odoo y Tablero Kanban."""
-    st.markdown("""
+    if force_view:
+        st.session_state["odoo_view_mode"] = force_view
+
+    title_text = "🗂️ Pipeline Kanban por Fases (Estilo Odoo CRM)" if st.session_state.get("odoo_view_mode") == "🗂️ Kanban Odoo" else "📊 Control Operativo de Requisiciones (Estilo Odoo ERP)"
+    desc_text = "Vista de pipeline por columnas donde puedes arrastrar/cambiar de estatus cada requisición en 1 clic." if st.session_state.get("odoo_view_mode") == "🗂️ Kanban Odoo" else "Gestión centralizada por fases, agrupación multidimensional y expediente digital permanente."
+
+    st.markdown(f"""
     <div style="background-color:#FFFFFF; border-left:5px solid #EC2024; padding:16px 20px; border-radius:6px; margin-bottom:18px; box-shadow:0 2px 6px rgba(0,0,0,0.04); border-top:1px solid #E2E8F0; border-right:1px solid #E2E8F0; border-bottom:1px solid #E2E8F0;">
         <div style="font-size:18px; font-weight:800; color:#0F172A; text-transform:uppercase; letter-spacing:0.5px;">
-            📊 Control Operativo de Requisiciones (Estilo Odoo ERP)
+            {title_text}
         </div>
         <div style="font-size:13px; color:#64748B; margin-top:4px;">
-            Industria SIGRAMA S.A. de C.V. &bull; Gestión centralizada por fases, agrupación multidimensional y expediente digital permanente.
+            Industria SIGRAMA S.A. de C.V. &bull; {desc_text}
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -178,9 +184,12 @@ def render_dashboard():
             )
 
         with f_col4:
+            cur_view = st.session_state.get("odoo_view_mode", "📋 Lista Odoo")
+            opts = ["📋 Lista Odoo", "🗂️ Kanban Odoo"]
             view_mode = st.radio(
                 "Modo de Vista:",
-                options=["📋 Lista Odoo", "🗂️ Kanban Odoo"],
+                options=opts,
+                index=opts.index(cur_view) if cur_view in opts else 0,
                 horizontal=True,
                 key="odoo_view_mode"
             )
@@ -825,6 +834,21 @@ def render_dashboard():
             (ESTATUS_CONGELADA, "7. 🧊 Congelada", cols_kanban[6]),
         ]
 
+        # En modo Kanban CRM se muestran todas las columnas de fases (respetando búsqueda y filtro de área)
+        df_kanban = df_reqs.copy()
+        if area_filter != "Todas las Áreas":
+            df_kanban = df_kanban[df_kanban["area_impacto"] == area_filter]
+        if search_text:
+            mask_k = (
+                df_kanban["id_requisicion"].str.lower().str.contains(search_text) |
+                df_kanban.get("folio_solicitud", pd.Series("", index=df_kanban.index)).str.lower().str.contains(search_text) |
+                df_kanban["solicitante"].str.lower().str.contains(search_text) |
+                df_kanban["descripcion_breve"].str.lower().str.contains(search_text) |
+                df_kanban["folio_po"].str.lower().str.contains(search_text) |
+                df_kanban["proveedor_seleccionado"].str.lower().str.contains(search_text)
+            )
+            df_kanban = df_kanban[mask_k]
+
         for state_key, state_title, col in column_states:
             cfg = STATUS_CONFIG.get(state_key, {})
             header_color = cfg.get("color", "#0F172A")
@@ -832,9 +856,9 @@ def render_dashboard():
             
             # Asegurar coincidencia incluso si viene con nombre antiguo 'Archivado Histórico'
             if state_key == ESTATUS_ARCHIVADA:
-                items_in_state = df_filtered[df_filtered["estatus"].isin([ESTATUS_ARCHIVADA, "Archivado Histórico"])]
+                items_in_state = df_kanban[df_kanban["estatus"].isin([ESTATUS_ARCHIVADA, "Archivado Histórico"])]
             else:
-                items_in_state = df_filtered[df_filtered["estatus"] == state_key]
+                items_in_state = df_kanban[df_kanban["estatus"] == state_key]
             
             with col:
                 st.markdown(f"""

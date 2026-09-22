@@ -402,19 +402,20 @@ def main():
 
         # Menú de Navegación por Fases
         menu_options = [
+            "📊 Panel de Control (Dashboard)",
+            "🗂️ Pipeline Kanban (CRM Odoo)",
             "📝 Registro y Cotizaciones (Fase 1)",
             "📑 Control de Orden de Compra (PO)",
-            "📊 Panel de Control (Dashboard)",
             "🔒 Mantenimiento y Respaldos"
         ]
 
         if "selected_nav" not in st.session_state:
-            st.session_state["selected_nav"] = menu_options[2]  # Mostrar por defecto el Dashboard con las 53 requisiciones
+            st.session_state["selected_nav"] = menu_options[0]  # Dashboard por defecto
 
         selected_menu = st.radio(
             "Flujo de Operación:",
             options=menu_options,
-            index=menu_options.index(st.session_state["selected_nav"]) if st.session_state["selected_nav"] in menu_options else 2,
+            index=menu_options.index(st.session_state["selected_nav"]) if st.session_state["selected_nav"] in menu_options else 0,
             label_visibility="collapsed"
         )
         st.session_state["selected_nav"] = selected_menu
@@ -471,12 +472,14 @@ def main():
     # =========================================================================
     # ENRUTAMIENTO MODULAR
     # =========================================================================
-    if selected_menu == "📝 Registro y Cotizaciones (Fase 1)":
+    if selected_menu == "📊 Panel de Control (Dashboard)":
+        render_dashboard(force_view="📋 Lista Odoo")
+    elif selected_menu == "🗂️ Pipeline Kanban (CRM Odoo)":
+        render_dashboard(force_view="🗂️ Kanban Odoo")
+    elif selected_menu == "📝 Registro y Cotizaciones (Fase 1)":
         render_requisition_wizard()
     elif selected_menu == "📑 Control de Orden de Compra (PO)":
         render_po_control()
-    elif selected_menu == "📊 Panel de Control (Dashboard)":
-        render_dashboard()
     elif selected_menu == "🔒 Mantenimiento y Respaldos":
         render_admin_backup()
 
