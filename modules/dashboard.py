@@ -147,7 +147,7 @@ def modal_ver_expediente(dossier_id: str):
     st.markdown(f"""
     <style>
     /* =========================================================================
-       MAXIMIZAR Y ADAPTAR VENTANA MODAL @st.dialog
+       MAXIMIZAR Y ADAPTAR VENTANA MODAL @st.dialog  — v3.1 SIGRAMA
        ========================================================================= */
     div[data-testid="stDialog"] div[role="dialog"] {{
         {dialog_width_css}
@@ -157,6 +157,7 @@ def modal_ver_expediente(dossier_id: str):
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35) !important;
         padding: 18px 24px !important;
         background-color: #F8FAFC !important;
+        overflow-y: auto !important;
     }}
 
     /* Encabezado del diálogo */
@@ -167,94 +168,152 @@ def modal_ver_expediente(dossier_id: str):
     }}
 
     /* Tipografía grande y nítida en encabezados */
-    div[data-testid="stDialog"] h5 {{
-        font-size: 16px !important;
-        font-weight: 800 !important;
+    div[data-testid="stDialog"] h5,
+    div[data-testid="stDialog"] h5 p {{
+        font-size: 19px !important;
+        font-weight: 900 !important;
         color: #0F172A !important;
-        margin-bottom: 8px !important;
+        margin-bottom: 10px !important;
+        letter-spacing: -0.3px !important;
     }}
 
     /* =========================================================================
-       ALTO CONTRASTE Y TIPOGRAFÍA GRANDE EN ETIQUETAS (LABELS)
+       ALTO CONTRASTE Y TIPOGRAFÍA GRANDE EN ETIQUETAS (LABELS) +20%
        ========================================================================= */
+    div[data-testid="stDialog"] label,
     div[data-testid="stDialog"] label p,
     div[data-testid="stDialog"] label span,
     div[data-testid="stDialog"] label div,
-    div[data-testid="stDialog"] [data-testid="stWidgetLabel"] {{
-        font-size: 13.5px !important;
-        font-weight: 800 !important;
+    div[data-testid="stDialog"] [data-testid="stWidgetLabel"],
+    div[data-testid="stDialog"] [data-testid="stWidgetLabel"] p,
+    div[data-testid="stDialog"] .stSelectbox label p,
+    div[data-testid="stDialog"] .stTextInput label p,
+    div[data-testid="stDialog"] .stTextArea label p,
+    div[data-testid="stDialog"] .stNumberInput label p {{
+        font-size: 16px !important;
+        font-weight: 900 !important;
         color: #0F172A !important;
-        letter-spacing: 0.2px !important;
-        margin-bottom: 3px !important;
+        letter-spacing: 0.1px !important;
+        margin-bottom: 4px !important;
+        opacity: 1 !important;
     }}
 
     /* =========================================================================
-       ALTO CONTRASTE EN CAMPOS DE DATOS (INPUTS, TEXTAREAS, SELECTS)
+       ALTO CONTRASTE EN CAMPOS DE DATOS (INPUTS, TEXTAREAS, SELECTS) +20%
        ========================================================================= */
     div[data-testid="stDialog"] input,
     div[data-testid="stDialog"] textarea,
+    div[data-testid="stDialog"] div[data-baseweb="input"],
     div[data-testid="stDialog"] div[data-baseweb="input"] > div,
-    div[data-testid="stDialog"] div[data-baseweb="select"] > div {{
+    div[data-testid="stDialog"] div[data-baseweb="base-input"],
+    div[data-testid="stDialog"] div[data-baseweb="select"] > div,
+    div[data-testid="stDialog"] div[data-baseweb="select"] div[role="combobox"] {{
         background-color: #FFFFFF !important;
         color: #0F172A !important;
-        font-size: 14px !important;
+        font-size: 17px !important;
         font-weight: 700 !important;
-        border: 2px solid #475569 !important;
-        border-radius: 6px !important;
+        border: 2.5px solid #334155 !important;
+        border-radius: 7px !important;
+        opacity: 1 !important;
     }}
 
-    /* Texto escrito dentro de los inputs */
+    /* Texto escrito dentro de los inputs — forzar color oscuro */
     div[data-testid="stDialog"] input,
     div[data-testid="stDialog"] textarea {{
         color: #0F172A !important;
+        font-size: 17px !important;
+        font-weight: 700 !important;
+        -webkit-text-fill-color: #0F172A !important;
+        background-color: #FFFFFF !important;
+        caret-color: #EC2024 !important;
+    }}
+
+    /* Selectbox: todo el texto visible con alto contraste */
+    div[data-testid="stDialog"] div[data-baseweb="select"] *,
+    div[data-testid="stDialog"] div[data-baseweb="select"] span,
+    div[data-testid="stDialog"] div[data-baseweb="select"] div,
+    div[data-testid="stDialog"] [data-testid="stSelectbox"] * {{
+        color: #0F172A !important;
+        font-size: 17px !important;
         font-weight: 700 !important;
         -webkit-text-fill-color: #0F172A !important;
     }}
 
-    /* Selectbox texto visible */
-    div[data-testid="stDialog"] div[data-baseweb="select"] * {{
+    /* Números en st.number_input */
+    div[data-testid="stDialog"] [data-testid="stNumberInput"] input {{
         color: #0F172A !important;
-        font-weight: 700 !important;
+        font-size: 17px !important;
+        font-weight: 800 !important;
+        -webkit-text-fill-color: #0F172A !important;
     }}
 
-    /* Borde resaltado al enfocar cualquier campo (Foco SIGRAMA) */
+    /* Caption y ayuda contextual */
+    div[data-testid="stDialog"] .stCaption,
+    div[data-testid="stDialog"] small,
+    div[data-testid="stDialog"] [data-testid="stCaptionContainer"] {{
+        font-size: 13px !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
+    }}
+
+    /* Borde resaltado al enfocar cualquier campo (Foco SIGRAMA rojo) */
     div[data-testid="stDialog"] input:focus,
     div[data-testid="stDialog"] textarea:focus,
+    div[data-testid="stDialog"] div[data-baseweb="input"]:focus-within,
     div[data-testid="stDialog"] div[data-baseweb="input"]:focus-within > div,
     div[data-testid="stDialog"] div[data-baseweb="select"]:focus-within > div {{
-        border: 2px solid #EC2024 !important;
-        box-shadow: 0 0 0 3px rgba(236, 32, 36, 0.25) !important;
-        background-color: #FFFFFF !important;
+        border: 2.5px solid #EC2024 !important;
+        box-shadow: 0 0 0 4px rgba(236, 32, 36, 0.22) !important;
+        background-color: #FFFBFB !important;
     }}
 
     /* Estilo del botón Guardar Principal */
-    div[data-testid="stDialog"] button[kind="primary"] {{
+    div[data-testid="stDialog"] button[kind="primary"],
+    div[data-testid="stDialog"] [data-testid="stFormSubmitButton"] button {{
         background-color: #EC2024 !important;
         color: #FFFFFF !important;
-        font-size: 15px !important;
+        font-size: 18px !important;
         font-weight: 900 !important;
-        padding: 12px 20px !important;
-        border-radius: 8px !important;
+        padding: 14px 22px !important;
+        border-radius: 9px !important;
         letter-spacing: 0.5px !important;
         border: none !important;
-        box-shadow: 0 4px 14px rgba(236,32,36,0.35) !important;
+        box-shadow: 0 4px 16px rgba(236,32,36,0.40) !important;
+        -webkit-text-fill-color: #FFFFFF !important;
     }}
-    div[data-testid="stDialog"] button[kind="primary"]:hover {{
+    div[data-testid="stDialog"] button[kind="primary"]:hover,
+    div[data-testid="stDialog"] [data-testid="stFormSubmitButton"] button:hover {{
         background-color: #B91C1C !important;
     }}
 
     /* Botones secundarios (Zoom, Maximizar, Descarga) */
     div[data-testid="stDialog"] button[kind="secondary"] {{
-        background-color: #FFFFFF !important;
+        background-color: #F1F5F9 !important;
         color: #1E293B !important;
-        border: 1.8px solid #94A3B8 !important;
+        border: 2px solid #64748B !important;
         font-weight: 800 !important;
-        font-size: 12px !important;
+        font-size: 14px !important;
+        -webkit-text-fill-color: #1E293B !important;
     }}
     div[data-testid="stDialog"] button[kind="secondary"]:hover {{
         border-color: #EC2024 !important;
         color: #EC2024 !important;
         background-color: #FEF2F2 !important;
+        -webkit-text-fill-color: #EC2024 !important;
+    }}
+
+    /* Texto general dentro del modal */
+    div[data-testid="stDialog"] p,
+    div[data-testid="stDialog"] span:not([class]),
+    div[data-testid="stDialog"] div.stMarkdown p {{
+        font-size: 15px !important;
+        color: #0F172A !important;
+        font-weight: 600 !important;
+    }}
+
+    /* Dataframe / tablas dentro del modal */
+    div[data-testid="stDialog"] [data-testid="stDataFrame"] * {{
+        font-size: 14px !important;
     }}
     </style>
     """, unsafe_allow_html=True)
