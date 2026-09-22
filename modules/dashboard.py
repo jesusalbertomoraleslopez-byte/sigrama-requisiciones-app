@@ -365,9 +365,11 @@ def render_dashboard():
 
             # Formatear datos para presentación impecable
             display_df = sub_df.reset_index(drop=True).copy()
-            
+
             # Formatear montos con moneda
-            display_df["Interno"] = display_df.get("folio_solicitud", "")
+            display_df["Interno"] = display_df.get("folio_solicitud", "").apply(
+                lambda v: str(v).upper() if v else ""
+            )
             display_df["Monto ($)"] = display_df["monto_estimado"].apply(lambda v: f"${float(v):,.2f}" if float(v) > 0 else "-")
             display_df["Folio"] = display_df["id_requisicion"]
             display_df["Fecha"] = display_df["fecha_requisicion"]
@@ -375,18 +377,41 @@ def render_dashboard():
             display_df["Área"] = display_df["area_impacto"]
             display_df["Descripción"] = display_df["descripcion_breve"]
             display_df["Cot."] = display_df["num_cotizaciones"].astype(int)
-            display_df["Estatus Odoo"] = display_df["estatus"]
             display_df["Folio PO"] = display_df["folio_po"].apply(lambda p: p if p else "-")
+
+            # Columna Estatus con emoji de badge de color según STATUS_CONFIG
+            def fmt_estatus(e):
+                cfg = STATUS_CONFIG.get(str(e).strip(), {})
+                icon = cfg.get("icon", "❓")
+                return f"{icon} {e}"
+            display_df["Estatus Odoo"] = display_df["estatus"].apply(fmt_estatus)
+
             display_df.insert(0, "Sel.", False)
 
             cols_to_show = ["Sel.", "Interno", "Folio", "Fecha", "Estatus Odoo", "Área", "Solicitante", "Descripción", "Cot.", "Monto ($)", "Folio PO"]
-            
+
             # Aplicar estilo de color a las últimas cargadas (exactamente como en Remisiones #FFF59D)
+            # Y aplicar color de fila según estatus
+            def style_table(row):
+                estatus_raw = str(row.get("Estatus Odoo", "")).strip()
+                # Buscar la clave original en STATUS_CONFIG
+                cfg = {}
+                for k, v in STATUS_CONFIG.items():
+                    if k in estatus_raw:
+                        cfg = v
+                        break
+                bg = ""
+                if row["Folio"] in ultimas_cargadas_set and "Amarillo" in highlight_mode:
+                    bg = "background-color: #FFF59D; color: #0F172A;"
+                elif cfg:
+                    bg = f"background-color: {cfg['bg_color']}22; color: #0F172A;"
+                return [bg for _ in row]
+
             if "Amarillo" in highlight_mode:
-                def highlight_recientes(row):
-                    is_recent = row["Folio"] in ultimas_cargadas_set
-                    return ['background-color: #FFF59D; color: #0F172A;' if is_recent else '' for _ in row]
-                data_to_render = display_df[cols_to_show].style.apply(highlight_recientes, axis=1)
+                data_to_render = display_df[cols_to_show].style.apply(
+                    lambda row: ['background-color: #FFF59D; color: #0F172A;' if row["Folio"] in ultimas_cargadas_set else '' for _ in row],
+                    axis=1
+                )
             else:
                 data_to_render = display_df[cols_to_show]
 
@@ -398,10 +423,26 @@ def render_dashboard():
                 key=table_key,
                 column_config={
                     "Sel.": st.column_config.CheckboxColumn("✉️", help="Marca la casilla para incluir en el paquete de correo .eml", default=False, width="small"),
-                    "Interno": st.column_config.TextColumn("Interno (SOL)", width="small", help="Consecutivo Interno Planta Metales (SOL-XXXXX)", disabled=True),
+                    "Interno": st.column_config.TextColumn(
+                        "Interno (SOL)",
+                        width="medium",
+                        help="Consecutivo Interno Planta Metales (SOL-XXXXX)",
+                        disabled=True
+                    ),
                     "Folio": st.column_config.TextColumn("Folio (REQ)", width="small", help="Folio Oficial de Requisición", disabled=True),
                     "Fecha": st.column_config.TextColumn("Fecha", width="small", disabled=True),
-                    "Estatus Odoo": st.column_config.TextColumn("Estatus", width="medium", disabled=True),
+                    "Estatus Odoo": st.column_config.SelectboxColumn(
+                        "Estatus",
+                        width="medium",
+                        options=[
+                            f"{STATUS_CONFIG[ESTATUS_ESPERA_COTIZACION]['icon']} {ESTATUS_ESPERA_COTIZACION}",
+                            f"{STATUS_CONFIG[ESTATUS_PENDIENTE_AUTORIZACION]['icon']} {ESTATUS_PENDIENTE_AUTORIZACION}",
+                            f"{STATUS_CONFIG[ESTATUS_PO_GENERADA]['icon']} {ESTATUS_PO_GENERADA}",
+                            f"{STATUS_CONFIG[ESTATUS_ARCHIVADO]['icon']} {ESTATUS_ARCHIVADO}",
+                        ],
+                        disabled=True,
+                        help="Estado actual de la requisición en el flujo de compras"
+                    ),
                     "Área": st.column_config.SelectboxColumn("Área de Impacto", width="medium", options=areas_list, required=True, help="Haz clic para seleccionar el área de la requisición"),
                     "Solicitante": st.column_config.TextColumn("Solicitante", width="medium", disabled=True),
                     "Descripción": st.column_config.TextColumn("Descripción", width="large", required=True, help="Haz doble clic o escribe para modificar la descripción directamente"),
@@ -410,6 +451,7 @@ def render_dashboard():
                     "Folio PO": st.column_config.TextColumn("Orden (PO)", width="small", disabled=True)
                 }
             )
+
 
             # Detectar y guardar cambios automáticos realizados directamente en la tabla
             edits_saved = []
