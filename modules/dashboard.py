@@ -132,59 +132,244 @@ def modal_ver_expediente(dossier_id: str):
                     pdf_file = f
                     break
 
-    # Encabezado visual compacto con identificador y semáforo
+    # Control de pantalla completa / maximizado
+    max_key = f"modal_maximized_{dossier_id}"
+    if max_key not in st.session_state:
+        st.session_state[max_key] = True  # Por defecto maximizado para máxima amplitud y legibilidad
+
+    is_max = st.session_state[max_key]
+    dialog_width_css = (
+        "width: 96vw !important; max-width: 1480px !important; min-height: 88vh !important;"
+        if is_max else
+        "width: 86vw !important; max-width: 1100px !important;"
+    )
+
     st.markdown(f"""
-    <div style="background-color:#FFFFFF; border:1px solid #CBD5E1; border-left:6px solid #EC2024; border-radius:8px; padding:10px 16px; margin-bottom:12px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div>
-                <span style="font-size:12px; font-weight:800; color:#475569; background:#F1F5F9; border:1px solid #CBD5E1; padding:3px 8px; border-radius:4px; margin-right:8px;">{sol_id or 'SOL-S/N'}</span>
-                <span style="font-size:24px; font-weight:900; color:#EC2024; font-family:'Montserrat', sans-serif;">{dossier_id}</span>
-            </div>
-            <span style="background-color:{status_bg}; color:{status_color}; border:1px solid {status_color}44; padding:4px 12px; border-radius:6px; font-weight:800; font-size:13px;">
+    <style>
+    /* =========================================================================
+       MAXIMIZAR Y ADAPTAR VENTANA MODAL @st.dialog
+       ========================================================================= */
+    div[data-testid="stDialog"] div[role="dialog"] {{
+        {dialog_width_css}
+        max-height: 95vh !important;
+        border-radius: 12px !important;
+        border: 2px solid #CBD5E1 !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35) !important;
+        padding: 18px 24px !important;
+        background-color: #F8FAFC !important;
+    }}
+
+    /* Encabezado del diálogo */
+    div[data-testid="stDialog"] div[role="dialog"] > div:first-child {{
+        border-bottom: 2px solid #E2E8F0 !important;
+        padding-bottom: 8px !important;
+        margin-bottom: 12px !important;
+    }}
+
+    /* Tipografía grande y nítida en encabezados */
+    div[data-testid="stDialog"] h5 {{
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        color: #0F172A !important;
+        margin-bottom: 8px !important;
+    }}
+
+    /* =========================================================================
+       ALTO CONTRASTE Y TIPOGRAFÍA GRANDE EN ETIQUETAS (LABELS)
+       ========================================================================= */
+    div[data-testid="stDialog"] label p,
+    div[data-testid="stDialog"] label span,
+    div[data-testid="stDialog"] label div,
+    div[data-testid="stDialog"] [data-testid="stWidgetLabel"] {{
+        font-size: 13.5px !important;
+        font-weight: 800 !important;
+        color: #0F172A !important;
+        letter-spacing: 0.2px !important;
+        margin-bottom: 3px !important;
+    }}
+
+    /* =========================================================================
+       ALTO CONTRASTE EN CAMPOS DE DATOS (INPUTS, TEXTAREAS, SELECTS)
+       ========================================================================= */
+    div[data-testid="stDialog"] input,
+    div[data-testid="stDialog"] textarea,
+    div[data-testid="stDialog"] div[data-baseweb="input"] > div,
+    div[data-testid="stDialog"] div[data-baseweb="select"] > div {{
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        border: 2px solid #475569 !important;
+        border-radius: 6px !important;
+    }}
+
+    /* Texto escrito dentro de los inputs */
+    div[data-testid="stDialog"] input,
+    div[data-testid="stDialog"] textarea {{
+        color: #0F172A !important;
+        font-weight: 700 !important;
+        -webkit-text-fill-color: #0F172A !important;
+    }}
+
+    /* Selectbox texto visible */
+    div[data-testid="stDialog"] div[data-baseweb="select"] * {{
+        color: #0F172A !important;
+        font-weight: 700 !important;
+    }}
+
+    /* Borde resaltado al enfocar cualquier campo (Foco SIGRAMA) */
+    div[data-testid="stDialog"] input:focus,
+    div[data-testid="stDialog"] textarea:focus,
+    div[data-testid="stDialog"] div[data-baseweb="input"]:focus-within > div,
+    div[data-testid="stDialog"] div[data-baseweb="select"]:focus-within > div {{
+        border: 2px solid #EC2024 !important;
+        box-shadow: 0 0 0 3px rgba(236, 32, 36, 0.25) !important;
+        background-color: #FFFFFF !important;
+    }}
+
+    /* Estilo del botón Guardar Principal */
+    div[data-testid="stDialog"] button[kind="primary"] {{
+        background-color: #EC2024 !important;
+        color: #FFFFFF !important;
+        font-size: 15px !important;
+        font-weight: 900 !important;
+        padding: 12px 20px !important;
+        border-radius: 8px !important;
+        letter-spacing: 0.5px !important;
+        border: none !important;
+        box-shadow: 0 4px 14px rgba(236,32,36,0.35) !important;
+    }}
+    div[data-testid="stDialog"] button[kind="primary"]:hover {{
+        background-color: #B91C1C !important;
+    }}
+
+    /* Botones secundarios (Zoom, Maximizar, Descarga) */
+    div[data-testid="stDialog"] button[kind="secondary"] {{
+        background-color: #FFFFFF !important;
+        color: #1E293B !important;
+        border: 1.8px solid #94A3B8 !important;
+        font-weight: 800 !important;
+        font-size: 12px !important;
+    }}
+    div[data-testid="stDialog"] button[kind="secondary"]:hover {{
+        border-color: #EC2024 !important;
+        color: #EC2024 !important;
+        background-color: #FEF2F2 !important;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Encabezado visual de la modal con botón de maximizar
+    h_c1, h_c2, h_c3 = st.columns([2.2, 1.2, 0.9])
+    with h_c1:
+        st.markdown(f"""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:13px; font-weight:800; color:#1E293B; background:#E2E8F0; border:1.5px solid #94A3B8; padding:3px 10px; border-radius:5px;">{sol_id or 'SOL-S/N'}</span>
+            <span style="font-size:26px; font-weight:900; color:#EC2024; font-family:'Montserrat', sans-serif;">{dossier_id}</span>
+        </div>
+        """, unsafe_allow_html=True)
+    with h_c2:
+        st.markdown(f"""
+        <div style="display:flex; justify-content:center; align-items:center; height:100%;">
+            <span style="background-color:{status_bg}; color:{status_color}; border:2px solid {status_color}66; padding:5px 14px; border-radius:6px; font-weight:800; font-size:13px;">
                 {status_icon} {matched_status}
             </span>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    with h_c3:
+        if st.button("⛶ Restaurar" if is_max else "⛶ Maximizar", key=f"btn_toggle_max_{dossier_id}", use_container_width=True, help="Alterna entre vista maximizada y tamaño normal"):
+            st.session_state[max_key] = not is_max
+            st.rerun()
+
+    st.markdown("<hr style='margin: 8px 0 16px 0; border-color:#CBD5E1;'>", unsafe_allow_html=True)
 
     # DISPOSICIÓN A 2 COLUMNAS: Izquierda = Documento Preliminar (PDF), Derecha = Ajuste de Campos y Guardar
-    col_pdf, col_form = st.columns([1.1, 1.25])
+    col_pdf, col_form = st.columns([1.15, 1.25] if is_max else [1, 1.1])
 
     # -------------------------------------------------------------------------
-    # COLUMNA 1: VISTA PRELIMINAR DEL DOCUMENTO (PDF)
+    # COLUMNA 1: VISTA PRELIMINAR DEL DOCUMENTO (PDF) CON ZOOM INTERACTIVO
     # -------------------------------------------------------------------------
     with col_pdf:
-        st.markdown("##### 📄 Documento Preliminar (PDF Original)")
+        zoom_key = f"pdf_zoom_{dossier_id}"
+        if zoom_key not in st.session_state:
+            st.session_state[zoom_key] = 160  # DPI estándar nítido (~115% de zoom)
+
+        view_type_key = f"pdf_view_type_{dossier_id}"
+        if view_type_key not in st.session_state:
+            st.session_state[view_type_key] = "🖼️ Imagen Nítida (Con Zoom)"
+
+        t_col1, t_col2 = st.columns([1.4, 1.3])
+        with t_col1:
+            st.markdown("##### 📄 Documento Preliminar (PDF)")
+        with t_col2:
+            modo_visor = st.selectbox(
+                "Tipo de Visor:",
+                options=["🖼️ Imagen Nítida (Con Zoom)", "🖥️ Visor Interactivo PDF"],
+                key=view_type_key,
+                label_visibility="collapsed"
+            )
+
         if pdf_file and pdf_file.exists():
             with open(pdf_file, "rb") as f_pdf:
                 pdf_bytes = f_pdf.read()
 
-            st.download_button(
-                label="⬇️ Descargar PDF Original",
-                data=pdf_bytes,
-                file_name=pdf_file.name,
-                mime="application/pdf",
-                key=f"dl_pdf_preview_{dossier_id}",
-                use_container_width=True
-            )
+            # Botonera de Zoom interactiva
+            z_cols = st.columns([1, 1, 1, 1, 1.4])
+            with z_cols[0]:
+                if st.button("🔍 100%", key=f"z1_{dossier_id}", use_container_width=True, help="Zoom estándar (140 DPI)"):
+                    st.session_state[zoom_key] = 140
+                    st.rerun()
+            with z_cols[1]:
+                if st.button("🔎 130%", key=f"z2_{dossier_id}", use_container_width=True, help="Zoom medio (180 DPI)"):
+                    st.session_state[zoom_key] = 180
+                    st.rerun()
+            with z_cols[2]:
+                if st.button("🔎 170%", key=f"z3_{dossier_id}", use_container_width=True, help="Zoom grande (240 DPI)"):
+                    st.session_state[zoom_key] = 240
+                    st.rerun()
+            with z_cols[3]:
+                if st.button("🔎 220%", key=f"z4_{dossier_id}", use_container_width=True, help="Zoom máximo de alta fidelidad (310 DPI)"):
+                    st.session_state[zoom_key] = 310
+                    st.rerun()
+            with z_cols[4]:
+                st.download_button(
+                    label="⬇️ Descargar",
+                    data=pdf_bytes,
+                    file_name=pdf_file.name,
+                    mime="application/pdf",
+                    key=f"dl_pdf_preview_{dossier_id}",
+                    use_container_width=True
+                )
 
-            with st.container(height=680):
-                if fitz:
-                    try:
-                        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-                        for page_num in range(len(doc)):
-                            if len(doc) > 1:
-                                st.caption(f"📄 Página {page_num + 1} de {len(doc)}")
-                            page = doc[page_num]
-                            pix = page.get_pixmap(dpi=140)
-                            img_bytes = pix.tobytes("png")
-                            st.image(img_bytes, use_container_width=True)
-                    except Exception:
+            current_dpi = st.session_state.get(zoom_key, 160)
+            zoom_pct = int(round((current_dpi / 140) * 100))
+
+            if modo_visor == "🖥️ Visor Interactivo PDF":
+                b64 = base64.b64encode(pdf_bytes).decode("utf-8")
+                st.markdown(
+                    f'<iframe src="data:application/pdf;base64,{b64}#toolbar=1&navpanes=0&zoom={zoom_pct}" width="100%" height="700" style="border:2px solid #64748B; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08);"></iframe>',
+                    unsafe_allow_html=True
+                )
+            else:
+                st.caption(f"🔎 Zoom actual: **{zoom_pct}%** ({current_dpi} DPI) &bull; Usa los botones superiores para acercar o alejar el documento.")
+                with st.container(height=700):
+                    if fitz:
+                        try:
+                            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                            for page_num in range(len(doc)):
+                                if len(doc) > 1:
+                                    st.markdown(f"**Página {page_num + 1} de {len(doc)}**")
+                                page = doc[page_num]
+                                pix = page.get_pixmap(dpi=current_dpi)
+                                img_bytes = pix.tobytes("png")
+                                st.image(img_bytes, use_container_width=True)
+                        except Exception as err:
+                            st.warning(f"Error al renderizar páginas con zoom: {err}")
+                            b64 = base64.b64encode(pdf_bytes).decode("utf-8")
+                            st.markdown(f'<iframe src="data:application/pdf;base64,{b64}#toolbar=1" width="100%" height="640"></iframe>', unsafe_allow_html=True)
+                    else:
                         b64 = base64.b64encode(pdf_bytes).decode("utf-8")
-                        st.markdown(f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="640" style="border:1px solid #CBD5E1; border-radius:6px;"></iframe>', unsafe_allow_html=True)
-                else:
-                    b64 = base64.b64encode(pdf_bytes).decode("utf-8")
-                    st.markdown(f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="640" style="border:1px solid #CBD5E1; border-radius:6px;"></iframe>', unsafe_allow_html=True)
+                        st.markdown(f'<iframe src="data:application/pdf;base64,{b64}#toolbar=1" width="100%" height="640"></iframe>', unsafe_allow_html=True)
         else:
             st.info("ℹ️ No se ha encontrado el archivo PDF original de esta requisición.")
             uploaded_pdf = st.file_uploader("Adjuntar PDF de Requisición:", type=["pdf"], key=f"upload_pdf_{dossier_id}")
@@ -200,7 +385,7 @@ def modal_ver_expediente(dossier_id: str):
     # COLUMNA 2: FORMULARIO Y AJUSTE DE INFORMACIÓN
     # -------------------------------------------------------------------------
     with col_form:
-        st.markdown("##### ✏️ Ajuste de Información")
+        st.markdown("##### ✏️ Ajuste de Información y Catálogos")
         with st.form(key=f"form_expediente_{dossier_id}"):
             c_f1, c_f2 = st.columns(2)
             with c_f1:
