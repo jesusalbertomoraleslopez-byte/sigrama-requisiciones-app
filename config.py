@@ -186,8 +186,7 @@ PRIORIDADES_DEFAULT = ["Baja", "Media", "Alta", "Urgente"]
 
 # Paleta de Colores Post-it Oficial para Tarjetas Kanban
 PALETA_COLORES_ODOO = [
-    {"id": "blanco", "nombre": "⚪ Blanco", "color": "#64748B", "bg": "#FFFFFF", "border": "#E2E8F0", "top": "#CBD5E1"},
-    {"id": "amarillo", "nombre": "🟡 Amarillo Post-it", "color": "#CA8A04", "bg": "#FEF08A", "border": "#FDE047", "top": "#EAB308"},
+    {"id": "amarillo", "nombre": "🟡 Amarillo Post-it (Clásico)", "color": "#CA8A04", "bg": "#FEF08A", "border": "#FDE047", "top": "#EAB308"},
     {"id": "verde", "nombre": "🟢 Verde Post-it", "color": "#16A34A", "bg": "#BBF7D0", "border": "#86EFAC", "top": "#22C55E"},
     {"id": "azul", "nombre": "🔵 Azul Post-it", "color": "#0284C7", "bg": "#BAE6FD", "border": "#7DD3FC", "top": "#0284C7"},
     {"id": "rosa", "nombre": "🌸 Rosa Post-it", "color": "#DB2777", "bg": "#FBCFE8", "border": "#F9A8D4", "top": "#DB2777"},
@@ -195,6 +194,7 @@ PALETA_COLORES_ODOO = [
     {"id": "morado", "nombre": "🟣 Morado Post-it", "color": "#7C3AED", "bg": "#DDD6FE", "border": "#C4B5FD", "top": "#7C3AED"},
     {"id": "turquesa", "nombre": "🩵 Turquesa Post-it", "color": "#0891B2", "bg": "#A5F3FC", "border": "#67E8F9", "top": "#0891B2"},
     {"id": "rojo", "nombre": "🔴 Rojo Post-it", "color": "#DC2626", "bg": "#FECACA", "border": "#FCA5A5", "top": "#DC2626"},
+    {"id": "blanco", "nombre": "⚪ Blanco Neutro", "color": "#64748B", "bg": "#FFFFFF", "border": "#CBD5E1", "top": "#94A3B8"},
 ]
 
 # Clave de acceso para sección de mantenimiento (por defecto para entorno local)

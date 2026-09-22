@@ -291,6 +291,12 @@ def load_requisiciones() -> pd.DataFrame:
         # Asegurar columna de consecutivo interno
         if "folio_solicitud" not in df.columns:
             df["folio_solicitud"] = ""
+        # Asegurar columna de color_etiqueta estilo Post-it
+        if "color_etiqueta" not in df.columns:
+            df["color_etiqueta"] = "amarillo"
+        else:
+            df["color_etiqueta"] = df["color_etiqueta"].fillna("amarillo").astype(str).str.strip().str.lower()
+            df["color_etiqueta"] = df["color_etiqueta"].replace({"": "amarillo", "nan": "amarillo", "none": "amarillo"})
         # Asegurar columnas numéricas
         if "monto_estimado" in df.columns:
             df["monto_estimado"] = pd.to_numeric(df["monto_estimado"], errors="coerce").fillna(0.0)

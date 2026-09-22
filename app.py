@@ -232,15 +232,15 @@ st.markdown("""
     /* Estilo de Tarjetas Post-it para Tablero Kanban */
     .kanban-card {
         border-radius: 6px;
-        padding: 10px 10px;
-        margin-bottom: 8px;
+        padding: 12px 12px 10px 12px;
+        margin-bottom: 6px;
         transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
         cursor: default;
         position: relative;
     }
     .kanban-card:hover {
-        transform: scale(1.04) translateY(-3px) !important;
-        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18) !important;
+        transform: scale(1.03) translateY(-2px) !important;
+        box-shadow: 0 10px 18px rgba(15, 23, 42, 0.16) !important;
         z-index: 10;
         filter: brightness(0.97);
     }

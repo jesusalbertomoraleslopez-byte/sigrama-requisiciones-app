@@ -276,14 +276,16 @@ def modal_ver_expediente(dossier_id: str):
                 inp_notas = st.text_input("Notas de Auditoría:", value=str(req_info.get("notas_auditoria", "") or ""))
 
             paleta_ids = [c["id"] for c in PALETA_COLORES_ODOO]
-            cur_color_id = str(req_info.get("color_etiqueta", "blanco") or "blanco").strip().lower()
+            cur_color_id = str(req_info.get("color_etiqueta", "amarillo") or "amarillo").strip().lower()
+            if cur_color_id in ["", "nan", "none"]:
+                cur_color_id = "amarillo"
             col_idx = paleta_ids.index(cur_color_id) if cur_color_id in paleta_ids else 0
             inp_color_etiqueta = st.selectbox(
-                "🎨 Color de Etiqueta (Paleta Odoo):",
+                "🎨 Color de Fondo del Post-it (Tablero Kanban):",
                 options=paleta_ids,
                 index=col_idx,
                 format_func=lambda cid: next((c["nombre"] for c in PALETA_COLORES_ODOO if c["id"] == cid), cid),
-                help="Asigna un color para destacar esta requisición en el tablero Kanban."
+                help="Elige el color de fondo con el que se mostrará esta tarjeta Post-it en el tablero Kanban."
             )
 
             st.write("")
@@ -1262,22 +1264,20 @@ def render_dashboard(force_view: Optional[str] = None):
                         monto = row["monto_po"] if state_key in [ESTATUS_PO_GENERADA, ESTATUS_TERMINADA, ESTATUS_ARCHIVADA] and row["monto_po"] > 0 else row["monto_estimado"]
                         
                         po_badge = f"""<div style="font-size:10px; color:#047857; font-weight:bold; margin-top:3px;">PO: {row['folio_po']}</div>""" if row.get("folio_po") else ""
-                        color_val = str(row.get("color_etiqueta", "") or "").strip().lower()
-                        card_bg = "#FFFFFF"
-                        card_border = "#CBD5E1"
-                        card_top = "#CBD5E1"
-                        for c in PALETA_COLORES_ODOO:
-                            if c["id"] == color_val or c["color"].lower() == color_val:
-                                card_bg = c["bg"]
-                                card_border = c["border"]
-                                card_top = c.get("top", c["color"])
-                                break
+                        color_val = str(row.get("color_etiqueta", "amarillo") or "amarillo").strip().lower()
+                        if color_val in ["", "nan", "none"]:
+                            color_val = "amarillo"
+
+                        palette_match = next((c for c in PALETA_COLORES_ODOO if c["id"] == color_val or c["color"].lower() == color_val), PALETA_COLORES_ODOO[0])
+                        card_bg = palette_match["bg"]
+                        card_border = palette_match["border"]
+                        card_top = palette_match.get("top", palette_match["color"])
 
                         sol_badge = f"""<span style="font-size:9.5px; font-weight:800; color:#0F172A; background-color:rgba(255,255,255,0.75); border:1px solid rgba(0,0,0,0.12); padding:1px 4px; border-radius:3px; margin-right:4px;">{sol_id}</span>""" if sol_id else ""
                         sol_name_preview = sol.split('(')[0][:16]
 
                         st.markdown(f"""
-                        <div class="kanban-card" style="background-color:{card_bg} !important; border:1px solid {card_border} !important; border-top:6px solid {card_top} !important; box-shadow:0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04) !important;">
+                        <div class="kanban-card" style="background-color:{card_bg} !important; border:1px solid {card_border} !important; border-top:7px solid {card_top} !important; box-shadow:0 4px 6px -1px rgba(0,0,0,0.09), 0 2px 4px -1px rgba(0,0,0,0.05) !important;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <div>{sol_badge}<span style="font-weight:900; font-size:12px; color:#EC2024;">{req_id}</span></div>
                                 <span style="background-color:rgba(255,255,255,0.75); color:#1E293B; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; border:1px solid rgba(0,0,0,0.08);">{sol_name_preview}</span>
@@ -1285,67 +1285,20 @@ def render_dashboard(force_view: Optional[str] = None):
                             <div style="font-size:11.5px; color:#0F172A; margin-top:6px; font-weight:700; line-height:1.25;">
                                 {desc[:48]}{'...' if len(desc) > 48 else ''}
                             </div>
-                            <div style="font-size:10px; color:#475569; margin-top:4px; font-weight:600;">
+                            <div style="font-size:10px; color:#334155; margin-top:4px; font-weight:600;">
                                 📍 {area}
                             </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:4px; border-top:1px dashed rgba(0,0,0,0.15); font-size:10.5px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:4px; border-top:1px dashed rgba(0,0,0,0.18); font-size:10.5px;">
                                 <span style="font-weight:900; color:#0F172A;">${float(monto):,.0f}</span>
-                                <span style="color:#475569; font-weight:700;">📑 {num_cot}</span>
+                                <span style="color:#334155; font-weight:700;">📑 {num_cot}</span>
                             </div>
                             {po_badge}
                         </div>
                         """, unsafe_allow_html=True)
 
-                        # Botones de avance y retroceso directo de etapa en 1 clic
-                        cur_state_val = state_key if state_key in TODOS_ESTATUS else ESTATUS_ARCHIVADA
-                        cur_idx = TODOS_ESTATUS.index(cur_state_val)
-
-                        # Botones rápidos: [◀ Retroceder] [👁️ Ver] [Avanzar ▶]
-                        btn_c1, btn_c2, btn_c3 = st.columns([1, 1.1, 1])
-                        
-                        with btn_c1:
-                            if cur_idx > 0:
-                                prev_state = TODOS_ESTATUS[cur_idx - 1]
-                                prev_icon = STATUS_CONFIG.get(prev_state, {}).get("icon", "◀")
-                                if st.button(f"◀", key=f"btn_prev_{req_id}", help=f"Regresar a '{prev_state}'", use_container_width=True):
-                                    update_requisicion_detalles(req_id, nuevo_estatus=prev_state)
-                                    st.toast(f"◀ {sol_id or req_id} movida a '{prev_state}'", icon="📋")
-                                    st.rerun()
-
-                        with btn_c2:
-                            if st.button("👁️", key=f"btn_kan_{req_id}", help=f"Abrir ventana de expediente de {req_id}", use_container_width=True):
-                                modal_ver_expediente(req_id)
-
-                        with btn_c3:
-                            if cur_idx < len(TODOS_ESTATUS) - 1:
-                                next_state = TODOS_ESTATUS[cur_idx + 1]
-                                next_icon = STATUS_CONFIG.get(next_state, {}).get("icon", "▶")
-                                if st.button(f"▶", key=f"btn_next_{req_id}", help=f"Avanzar a '{next_state}'", use_container_width=True):
-                                    update_requisicion_detalles(req_id, nuevo_estatus=next_state)
-                                    st.toast(f"▶ {sol_id or req_id} avanzada a '{next_state}'", icon="🚀")
-                                    st.rerun()
-
-                        # Controles de Etapa y Paleta Post-it
-                        k_pop1, k_pop2 = st.columns([1.1, 1.1])
-                        with k_pop1:
-                            with st.popover("⚙️ Etapa", use_container_width=True):
-                                st.caption(f"Reasignar etapa:")
-                                for s_name in TODOS_ESTATUS:
-                                    if s_name != cur_state_val:
-                                        s_icon = STATUS_CONFIG.get(s_name, {}).get("icon", "•")
-                                        if st.button(f"{s_icon} {s_name}", key=f"pop_mv_{req_id}_{s_name}", use_container_width=True):
-                                            update_requisicion_detalles(req_id, nuevo_estatus=s_name)
-                                            st.toast(f"🔄 {sol_id or req_id} movida a '{s_name}'", icon="🚀")
-                                            st.rerun()
-
-                        with k_pop2:
-                            with st.popover("🎨 Post-it", use_container_width=True):
-                                st.caption("Cambiar color Post-it:")
-                                for c_item in PALETA_COLORES_ODOO:
-                                    if st.button(c_item["nombre"], key=f"btn_card_col_{req_id}_{c_item['id']}", use_container_width=True):
-                                        update_requisicion_detalles(req_id, nuevo_color=c_item["id"])
-                                        st.toast(f"🎨 Post-it '{c_item['nombre']}' aplicado", icon="📝")
-                                        st.rerun()
+                        # Único botón limpio para abrir el expediente (el cambio de color y etapa se realiza en la ventana de detalle)
+                        if st.button("👁️ Abrir Expediente", key=f"btn_kan_{req_id}", help=f"Abrir expediente preliminar y ajustar información de {req_id}", use_container_width=True):
+                            modal_ver_expediente(req_id)
 
     # =========================================================================
     # EXPEDIENTE DIGITAL PERMANENTE Y DESCARGA EN 1 CLIC
