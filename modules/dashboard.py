@@ -25,6 +25,7 @@ from config import (
     ESTATUS_PO_GENERADA,
     ESTATUS_TERMINADA,
     ESTATUS_ARCHIVADA,
+    ESTATUS_ARCHIVADO,
     ESTATUS_CONGELADA,
     STATUS_CONFIG,
     TODOS_ESTATUS,
@@ -264,7 +265,7 @@ def render_dashboard(force_view: Optional[str] = None):
     # TARJETAS DE INDICADORES CLAVE (KPIS RESUMEN)
     # =========================================================================
     monto_total_est = df_filtered["monto_estimado"].sum()
-    monto_total_po = df_filtered[df_filtered["estatus"].isin([ESTATUS_PO_GENERADA, ESTATUS_ARCHIVADO])]["monto_po"].sum()
+    monto_total_po = df_filtered[df_filtered["estatus"].isin([ESTATUS_PO_GENERADA, ESTATUS_TERMINADA, ESTATUS_ARCHIVADA, "Archivado Histórico"])]["monto_po"].sum()
 
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Registros Mostrados", len(df_filtered), delta=f"{len(df_filtered)} requisiciones", delta_color="off")

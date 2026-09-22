@@ -128,39 +128,53 @@ st.markdown("""
     [data-testid="stSidebar"] span, 
     [data-testid="stSidebar"] label,
     [data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] {
-        color: #FFFFFF !important;
+        color: #F8FAFC !important;
         font-family: 'Questrial', sans-serif !important;
     }
 
-    /* Radio de navegación en sidebar estilizado con acento Rojo SIGRAMA */
+    /* Radio de navegación en sidebar: diseño tipo pastillas Odoo moderno y legible */
     [data-testid="stSidebar"] div[role="radiogroup"] {
-        background-color: #18181B !important;
-        border: 1px solid #27272A !important;
-        border-radius: 8px !important;
-        padding: 6px !important;
-        gap: 4px !important;
+        background-color: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        gap: 6px !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
     [data-testid="stSidebar"] div[role="radiogroup"] label {
-        color: #E2E8F0 !important;
+        background-color: #18181B !important;
+        border: 1px solid #27272A !important;
+        color: #F1F5F9 !important;
         padding: 10px 14px !important;
-        border-radius: 6px !important;
+        border-radius: 8px !important;
         transition: all 0.2s ease !important;
         margin: 0 !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
     }
     [data-testid="stSidebar"] div[role="radiogroup"] label p,
     [data-testid="stSidebar"] div[role="radiogroup"] label span {
-        font-size: 14px !important;
+        font-size: 13.5px !important;
         font-family: 'Montserrat', sans-serif !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
+        color: #F1F5F9 !important;
+        line-height: 1.4 !important;
     }
     [data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-        background-color: rgba(236, 32, 36, 0.2) !important;
+        background-color: #27272A !important;
+        border-color: #EC2024 !important;
         color: #FFFFFF !important;
     }
     [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
         background-color: #EC2024 !important;
+        border-color: #EC2024 !important;
+        box-shadow: 0 3px 10px rgba(236, 32, 36, 0.45) !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] p,
+    [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] span {
         color: #FFFFFF !important;
-        box-shadow: 0 2px 8px rgba(236, 32, 36, 0.4) !important;
+        font-weight: 800 !important;
     }
 
     /* Botón Primario Corporativo SIGRAMA (#EC2024) */
@@ -359,17 +373,18 @@ def main():
     # SIDEBAR: IDENTIDAD CORPORATIVA SIGRAMA
     # =========================================================================
     with st.sidebar:
-        # Preferir logotipo negativo oficial para fondo negro
+        # Logotipo SIGRAMA estilizado (tamaño óptimo y elegante ~160px centrado)
         logo_neg = BASE_DIR / "brand" / "logo_sigrama_negative.png"
-        if logo_neg.exists():
-            st.image(str(logo_neg), use_container_width=True)
-        elif LOGO_SIGRAMA_PATH.exists():
-            st.image(str(LOGO_SIGRAMA_PATH), use_container_width=True)
+        target_logo = logo_neg if logo_neg.exists() else LOGO_SIGRAMA_PATH
+        if target_logo.exists():
+            col_l1, col_l2, col_l3 = st.columns([0.15, 0.7, 0.15])
+            with col_l2:
+                st.image(str(target_logo), use_container_width=True)
         else:
             st.markdown("""
             <div style="text-align:center; padding:10px 0;">
-                <div style="font-size:24px; font-weight:900; color:#FFFFFF; letter-spacing:1.5px;">SIGRAMA</div>
-                <div style="font-size:11px; color:#EC2024; font-weight:800; letter-spacing:1px;">INDUSTRIA SIGRAMA</div>
+                <div style="font-size:22px; font-weight:900; color:#FFFFFF; letter-spacing:1.5px;">SIGRAMA</div>
+                <div style="font-size:10px; color:#EC2024; font-weight:800; letter-spacing:1px;">INDUSTRIA SIGRAMA</div>
             </div>
             """, unsafe_allow_html=True)
 
