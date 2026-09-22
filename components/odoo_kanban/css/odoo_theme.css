@@ -28,47 +28,147 @@ body {
     font-family: var(--font-body);
     background-color: transparent;
     color: var(--text-primary);
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 4px 6px;
+    overflow: hidden;
+    padding: 2px 4px;
     height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* ==========================================================================
-   1. CONTENEDOR KANBAN HORIZONTAL CON COLUMNAS
+   1. BARRA SUPERIOR DE NAVEGACIÓN Y DESPLAZAMIENTO RÁPIDO
    ========================================================================== */
+.kanban-top-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 10px;
+    background: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.nav-scroll-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+}
+
+.nav-scroll-btn {
+    background: #F1F5F9;
+    border: 1px solid #CBD5E1;
+    color: #1E293B;
+    font-weight: 800;
+    font-size: 11px;
+    padding: 4px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.nav-scroll-btn:hover {
+    background: #EC2024;
+    color: #FFFFFF;
+    border-color: #EC2024;
+}
+
+.nav-stage-chips {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    overflow-x: auto;
+}
+
+.nav-stage-chip {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.nav-stage-chip:hover {
+    background: #EFF6FF;
+    border-color: #3B82F6;
+    color: #1D4ED8;
+    transform: translateY(-1px);
+}
+
+.nav-info-group {
+    font-size: 10.5px;
+    color: #64748B;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    padding-left: 8px;
+}
+
+.nav-scroll-hint {
+    font-size: 10.5px;
+    color: #64748B;
+}
+
+/* ==========================================================================
+   2. CONTENEDOR WRAPPER CON SCROLLBAR HORIZONTAL PROMINENTE
+   ========================================================================== */
+.kanban-scroll-wrapper {
+    flex: 1;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 4px;
+    scroll-behavior: smooth;
+}
+
+/* Scrollbar prominente, gruesa y con acento corporativo siempre visible */
+.kanban-scroll-wrapper::-webkit-scrollbar {
+    height: 14px;
+}
+.kanban-scroll-wrapper::-webkit-scrollbar-track {
+    background: #E2E8F0;
+    border-radius: 7px;
+    border: 1px solid #CBD5E1;
+}
+.kanban-scroll-wrapper::-webkit-scrollbar-thumb {
+    background: #94A3B8;
+    border-radius: 7px;
+    border: 2px solid #E2E8F0;
+}
+.kanban-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #EC2024;
+}
+
 .kanban-board-container {
     display: flex;
-    gap: 14px;
-    height: calc(100vh - 12px);
-    min-height: 620px;
-    padding-bottom: 8px;
+    gap: 12px;
+    height: 100%;
+    min-width: min-content;
 }
 
-/* Scrollbar estilizada */
-body::-webkit-scrollbar {
-    height: 10px;
-}
-body::-webkit-scrollbar-track {
-    background: #E2E8F0;
-    border-radius: 5px;
-}
-body::-webkit-scrollbar-thumb {
-    background: #94A3B8;
-    border-radius: 5px;
-}
-body::-webkit-scrollbar-thumb:hover {
-    background: #64748B;
-}
-
-/* Columnas individuales */
+/* Columnas individuales (280px para óptimo acomodo en 1366px) */
 .kanban-column {
     background-color: #F8FAFC;
     border: 1px solid var(--border-column);
     border-radius: 8px;
-    width: 310px;
-    min-width: 310px;
-    max-width: 310px;
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
     display: flex;
     flex-direction: column;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);

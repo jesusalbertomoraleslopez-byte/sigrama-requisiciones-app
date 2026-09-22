@@ -8,9 +8,25 @@
 </head>
 <body>
 
-    <!-- CONTENEDOR KANBAN HORIZONTAL -->
-    <div class="kanban-board-container" id="kanbanBoard">
-        <!-- Renderizado dinámico desde kanban.js -->
+    <!-- BARRA SUPERIOR DE NAVEGACIÓN Y DESPLAZAMIENTO RÁPIDO -->
+    <div class="kanban-top-nav-bar" id="kanbanTopNavBar">
+        <div class="nav-scroll-group">
+            <button class="nav-scroll-btn" id="btnScrollLeft" title="Desplazar a la izquierda (fases previas)">◀ Desplazar</button>
+            <div class="nav-stage-chips" id="navStageChips">
+                <!-- Se llena dinámicamente con las fases para salto directo -->
+            </div>
+            <button class="nav-scroll-btn" id="btnScrollRight" title="Desplazar a la derecha (fases siguientes)">Desplazar ▶</button>
+        </div>
+        <div class="nav-info-group">
+            <span class="nav-scroll-hint">💡 Usa <b>◀ ▶</b>, la rueda del ratón o la barra inferior para desplazarte</span>
+        </div>
+    </div>
+
+    <!-- WRAPPER CON SCROLLBAR HORIZONTAL PROMINENTE -->
+    <div class="kanban-scroll-wrapper" id="kanbanScrollWrapper">
+        <div class="kanban-board-container" id="kanbanBoard">
+            <!-- Renderizado dinámico desde kanban.js -->
+        </div>
     </div>
 
     <!-- SCRIPTS -->

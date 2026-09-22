@@ -17,11 +17,23 @@ function sendValueToStreamlit(value) {
     }, "*");
 }
 
+function computeOptimalHeight() {
+    const screenH = (window.screen && window.screen.availHeight) ? window.screen.availHeight : (window.innerHeight || 768);
+    if (screenH <= 800) {
+        return 580; // Altura optimizada para pantallas 1366x768 (evita que la barra inferior quede fuera)
+    } else if (screenH <= 900) {
+        return 630;
+    } else {
+        return 680;
+    }
+}
+
 function sendFrameHeight(height) {
+    const optimalH = height || computeOptimalHeight();
     window.parent.postMessage({
         isStreamlitMessage: true,
         type: "streamlit:setFrameHeight",
-        height: height || 740
+        height: optimalH
     }, "*");
 }
 
@@ -40,7 +52,9 @@ window.addEventListener("message", (event) => {
         if (args && args.columns) {
             currentColumns = args.columns;
             renderKanbanBoard(args.columns, args.total_count || 0);
-            sendFrameHeight(740);
+            updateTopNavStageChips(args.columns);
+            setupScrollControls();
+            sendFrameHeight();
         }
     }
 });
@@ -48,7 +62,12 @@ window.addEventListener("message", (event) => {
 // Inicialización
 document.addEventListener("DOMContentLoaded", () => {
     notifyComponentReady();
-    sendFrameHeight(740);
+    setupScrollControls();
+    sendFrameHeight();
+});
+
+window.addEventListener("resize", () => {
+    sendFrameHeight();
 });
 
 // ==========================================================================
@@ -273,3 +292,65 @@ window.toggleFoldStage = function(stageId, event) {
     }
 };
 
+// ==========================================================================
+// 5. NAVEGACIÓN RÁPIDA SUPERIOR Y CONTROLES DE DESPLAZAMIENTO (SCROLL)
+// ==========================================================================
+function updateTopNavStageChips(columns) {
+    const chipsContainer = document.getElementById("navStageChips");
+    if (!chipsContainer) return;
+    chipsContainer.innerHTML = "";
+
+    columns.forEach(col => {
+        const chip = document.createElement("button");
+        chip.className = "nav-stage-chip";
+        chip.innerHTML = `<span>${col.icon}</span> <span>${col.short_title}</span> <strong style="background:#E2E8F0; padding:1px 5px; border-radius:10px; font-size:9.5px; color:#1E293B;">${col.cards.length}</strong>`;
+        chip.title = `Saltar directamente a la columna ${col.short_title}`;
+        chip.onclick = (e) => {
+            e.preventDefault();
+            const colEl = document.querySelector(`.kanban-column[data-stage-id="${col.id}"]`);
+            if (colEl) {
+                colEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        };
+        chipsContainer.appendChild(chip);
+    });
+}
+
+let scrollControlsInitialized = false;
+
+function setupScrollControls() {
+    if (scrollControlsInitialized) return;
+    scrollControlsInitialized = true;
+
+    const btnLeft = document.getElementById("btnScrollLeft");
+    const btnRight = document.getElementById("btnScrollRight");
+    const wrapper = document.getElementById("kanbanScrollWrapper");
+    if (!wrapper) return;
+
+    if (btnLeft) {
+        btnLeft.onclick = (e) => {
+            e.preventDefault();
+            wrapper.scrollBy({ left: -320, behavior: 'smooth' });
+        };
+    }
+    if (btnRight) {
+        btnRight.onclick = (e) => {
+            e.preventDefault();
+            wrapper.scrollBy({ left: 320, behavior: 'smooth' });
+        };
+    }
+
+    // Scroll con la rueda del ratón (wheel): desplaza horizontalmente si se gira en cabeceras o fondo
+    wrapper.addEventListener('wheel', (e) => {
+        const dropzone = e.target.closest('.kanban-cards-dropzone');
+        if (dropzone) {
+            const atTop = dropzone.scrollTop <= 0 && e.deltaY < 0;
+            const atBottom = (dropzone.scrollTop + dropzone.clientHeight >= dropzone.scrollHeight - 2) && e.deltaY > 0;
+            if (atTop || atBottom || e.shiftKey) {
+                wrapper.scrollLeft += e.deltaY;
+            }
+        } else {
+            wrapper.scrollLeft += (e.deltaY || e.deltaX);
+        }
+    }, { passive: true });
+}

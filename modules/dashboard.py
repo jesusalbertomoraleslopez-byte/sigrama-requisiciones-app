@@ -1335,7 +1335,7 @@ def render_dashboard(force_view: Optional[str] = None):
 
         st.markdown("""
         <div style="background: rgba(236,32,36,0.06); border-left: 4px solid #EC2024; padding: 8px 14px; border-radius: 4px; margin-bottom: 10px; font-size: 12.5px; color: #1E293B;">
-            🖐️ <b>Movilidad Total (Drag & Drop):</b> Arrastra y suelta tarjetas entre las columnas para cambiar su estatus en tiempo real. Pulsa el botón <b>◀</b> en la cabecera para contraer columnas (ej. Congelada o Terminada) o usa el selector superior para activarlas/ocultarlas. Haz doble clic o pulsa <b>[👁️ Abrir Expediente]</b> para ver el expediente completo.
+            🖐️ <b>Navegación y Movilidad Total:</b> Usa los botones <b>[◀ Desplazar]</b> y <b>[Desplazar ▶]</b>, haz clic en las pestañas superiores de fase o usa la barra horizontal inferior para desplazarte por todas las columnas. Pulsa <b>◀</b> en cada cabecera para contraer columnas (ej. Congelada o Terminada) o usa el selector superior para ocultarlas.
         </div>
         """, unsafe_allow_html=True)
 
