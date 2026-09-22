@@ -247,12 +247,14 @@ st.markdown("""
     }
 
     /* Botón integrado de apertura inmediata debajo del Post-it */
+    div:has(.odoo-postit-card) + div.stElementContainer button,
+    div[data-testid="stElementContainer"]:has(.odoo-postit-card) + div[data-testid="stElementContainer"] button,
     div.stButton:has(> button[key*="btn_open_"]) > button {
         border-radius: 0 0 8px 8px !important;
         border-top: none !important;
         height: 34px !important;
         min-height: 34px !important;
-        font-size: 12px !important;
+        font-size: 11.5px !important;
         font-weight: 700 !important;
         background-color: #FFFFFF !important;
         color: #334155 !important;
@@ -260,6 +262,8 @@ st.markdown("""
         box-shadow: 0 4px 8px rgba(0,0,0,0.05) !important;
         transition: all 0.15s ease !important;
     }
+    div:has(.odoo-postit-card) + div.stElementContainer button:hover,
+    div[data-testid="stElementContainer"]:has(.odoo-postit-card) + div[data-testid="stElementContainer"] button:hover,
     div.stButton:has(> button[key*="btn_open_"]) > button:hover {
         background-color: #EC2024 !important;
         color: #FFFFFF !important;
