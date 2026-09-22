@@ -473,9 +473,11 @@ def main():
     # ENRUTAMIENTO MODULAR
     # =========================================================================
     if selected_menu == "📊 Panel de Control (Dashboard)":
-        render_dashboard(force_view="📋 Lista Odoo")
+        st.session_state["odoo_view_mode"] = "📋 Lista Odoo"
+        render_dashboard()
     elif selected_menu == "🗂️ Pipeline Kanban (CRM Odoo)":
-        render_dashboard(force_view="🗂️ Kanban Odoo")
+        st.session_state["odoo_view_mode"] = "🗂️ Kanban Odoo"
+        render_dashboard()
     elif selected_menu == "📝 Registro y Cotizaciones (Fase 1)":
         render_requisition_wizard()
     elif selected_menu == "📑 Control de Orden de Compra (PO)":

@@ -135,6 +135,8 @@ def render_dashboard(force_view: Optional[str] = None):
     """Renderiza el panel de control ejecutivo con Vista Lista tipo Odoo y Tablero Kanban."""
     if force_view:
         st.session_state["odoo_view_mode"] = force_view
+    elif "odoo_view_mode" not in st.session_state:
+        st.session_state["odoo_view_mode"] = "📋 Lista Odoo"
 
     title_text = "🗂️ Pipeline Kanban por Fases (Estilo Odoo CRM)" if st.session_state.get("odoo_view_mode") == "🗂️ Kanban Odoo" else "📊 Control Operativo de Requisiciones (Estilo Odoo ERP)"
     desc_text = "Vista de pipeline por columnas donde puedes arrastrar/cambiar de estatus cada requisición en 1 clic." if st.session_state.get("odoo_view_mode") == "🗂️ Kanban Odoo" else "Gestión centralizada por fases, agrupación multidimensional y expediente digital permanente."
