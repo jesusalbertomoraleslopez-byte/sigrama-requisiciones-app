@@ -56,6 +56,7 @@ COLUMNAS_REQUISICIONES = [
     "justificacion",
     "prioridad",
     "estatus",
+    "color_etiqueta",
     "proveedor_seleccionado",
     "monto_estimado",
     "moneda",
@@ -412,9 +413,10 @@ def update_requisicion_detalles(
     req_id: str,
     nueva_descripcion: Optional[str] = None,
     nueva_area: Optional[str] = None,
-    nuevo_estatus: Optional[str] = None
+    nuevo_estatus: Optional[str] = None,
+    nuevo_color: Optional[str] = None
 ) -> bool:
-    """Actualiza la descripción breve, área de impacto y/o estatus de una requisición y registra la última modificación."""
+    """Actualiza la descripción breve, área de impacto, estatus y/o color de etiqueta de una requisición."""
     init_databases()
     norm_id = normalize_req_id(req_id)
     if not norm_id:
@@ -430,6 +432,10 @@ def update_requisicion_detalles(
         df.at[idx, "area_impacto"] = str(nueva_area).strip()
     if nuevo_estatus is not None and str(nuevo_estatus).strip():
         df.at[idx, "estatus"] = str(nuevo_estatus).strip()
+    if nuevo_color is not None:
+        if "color_etiqueta" not in df.columns:
+            df["color_etiqueta"] = ""
+        df.at[idx, "color_etiqueta"] = str(nuevo_color).strip()
     df.at[idx, "ultima_modificacion"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     _atomic_write_excel(df, EXCEL_REQUISICIONES_PATH)
     return True

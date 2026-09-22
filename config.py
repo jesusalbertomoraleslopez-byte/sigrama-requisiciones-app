@@ -184,6 +184,19 @@ DIRECTORES_DEFAULT = [
 MONEDAS_DEFAULT = ["MXN", "USD", "EUR"]
 PRIORIDADES_DEFAULT = ["Baja", "Media", "Alta", "Urgente"]
 
+# Paleta de Colores Oficial para Tarjetas Kanban (Estilo Odoo CRM)
+PALETA_COLORES_ODOO = [
+    {"id": "blanco", "nombre": "⚪ Neutro", "color": "#94A3B8", "bg": "#FFFFFF", "border": "#CBD5E1"},
+    {"id": "rojo", "nombre": "🔴 Rojo Alerta", "color": "#EF4444", "bg": "#FEF2F2", "border": "#FCA5A5"},
+    {"id": "naranja", "nombre": "🟠 Naranja", "color": "#F97316", "bg": "#FFF7ED", "border": "#FDBA74"},
+    {"id": "amarillo", "nombre": "🟡 Amarillo", "color": "#EAB308", "bg": "#FEFCE8", "border": "#FDE047"},
+    {"id": "verde", "nombre": "🟢 Verde", "color": "#10B981", "bg": "#F0FDF4", "border": "#86EFAC"},
+    {"id": "azul", "nombre": "🔵 Azul", "color": "#3B82F6", "bg": "#EFF6FF", "border": "#93C5FD"},
+    {"id": "morado", "nombre": "🟣 Morado", "color": "#8B5CF6", "bg": "#F5F3FF", "border": "#C4B5FD"},
+    {"id": "rosa", "nombre": "🌸 Rosa", "color": "#EC4899", "bg": "#FDF2F8", "border": "#F9A8D4"},
+    {"id": "turquesa", "nombre": "🩵 Turquesa", "color": "#06B6D4", "bg": "#ECFEFF", "border": "#67E8F9"},
+]
+
 # Clave de acceso para sección de mantenimiento (por defecto para entorno local)
 ADMIN_PIN_DEFAULT = "SigramaAdmin2026"
 ADMIN_PASSWORDS = ["SigramaAdmin2026", "SigramaMetales2026", "Admin2026", "sigrama2026", "admin", "sigrama"]

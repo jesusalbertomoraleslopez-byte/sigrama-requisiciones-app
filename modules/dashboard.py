@@ -11,8 +11,16 @@ import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
+import base64
 import streamlit as st
 import pandas as pd
+try:
+    import pymupdf as fitz
+except ImportError:
+    try:
+        import fitz
+    except ImportError:
+        fitz = None
 
 from config import (
     COLOR_PRIMARY,
@@ -32,6 +40,7 @@ from config import (
     ESTATUS_CONGELADA,
     STATUS_CONFIG,
     TODOS_ESTATUS,
+    PALETA_COLORES_ODOO,
     REQUISICIONES_DIR,
     normalize_req_id,
     get_folder_name_for_req,
@@ -53,7 +62,7 @@ from email_generator import (
 
 @st.dialog("📋 Expediente y Ajuste de Requisición", width="large")
 def modal_ver_expediente(dossier_id: str):
-    """Ventana modal interactiva de alta fidelidad para previsualizar y ajustar todos los campos de la requisición."""
+    """Ventana modal interactiva de alta fidelidad: vista preliminar del PDF original y ajuste de datos."""
     req_info = get_requisicion_by_id(dossier_id)
     if not req_info:
         st.error(f"No se encontró información para la requisición {dossier_id}.")
@@ -102,207 +111,226 @@ def modal_ver_expediente(dossier_id: str):
     status_bg = cfg.get("bg_color", "#F1F5F9")
     status_icon = cfg.get("icon", "📋")
 
-    # Banner visual de la Requisición
+    # Localizar archivo PDF de la requisición en la carpeta local
+    req_dir = get_req_directory(dossier_id)
+    pdf_file = None
+    pdf_name = req_info.get("archivo_requisicion_pdf", "")
+    if pdf_name and (req_dir / pdf_name).exists():
+        pdf_file = req_dir / pdf_name
+    elif req_dir.exists():
+        for f in req_dir.iterdir():
+            if f.is_file() and f.suffix.lower() == ".pdf" and ("requisic" in f.name.lower() or "req" in f.name.lower()):
+                pdf_file = f
+                break
+        if not pdf_file:
+            for f in req_dir.iterdir():
+                if f.is_file() and f.suffix.lower() == ".pdf" and "cotiz" not in f.name.lower():
+                    pdf_file = f
+                    break
+
+    # Encabezado visual compacto con identificador y semáforo
     st.markdown(f"""
-    <div style="background-color:#FFFFFF; border:1px solid #CBD5E1; border-left:6px solid #EC2024; border-radius:8px; padding:12px 16px; margin-bottom:12px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
+    <div style="background-color:#FFFFFF; border:1px solid #CBD5E1; border-left:6px solid #EC2024; border-radius:8px; padding:10px 16px; margin-bottom:12px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <div>
                 <span style="font-size:12px; font-weight:800; color:#475569; background:#F1F5F9; border:1px solid #CBD5E1; padding:3px 8px; border-radius:4px; margin-right:8px;">{sol_id or 'SOL-S/N'}</span>
                 <span style="font-size:24px; font-weight:900; color:#EC2024; font-family:'Montserrat', sans-serif;">{dossier_id}</span>
             </div>
-            <span style="background-color:{status_bg}; color:{status_color}; border:1px solid {status_color}44; padding:5px 14px; border-radius:6px; font-weight:800; font-size:13px;">
+            <span style="background-color:{status_bg}; color:{status_color}; border:1px solid {status_color}44; padding:4px 12px; border-radius:6px; font-weight:800; font-size:13px;">
                 {status_icon} {matched_status}
             </span>
-        </div>
-        <div style="font-size:11.5px; color:#64748B; margin-top:6px;">
-            💡 <i>Modifica cualquier campo a continuación y presiona <b>GUARDAR INFORMACIÓN</b> para actualizar la base de datos de inmediato.</i>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # =========================================================================
-    # FORMULARIO EDITABLE DE TODOS LOS CAMPOS
-    # =========================================================================
-    with st.form(key=f"form_expediente_{dossier_id}"):
-        st.markdown("##### 📌 Identificación y Estatus Operativo")
-        c_f1, c_f2, c_f3, c_f4 = st.columns([1.1, 1.3, 1.8, 1.1])
-        
-        with c_f1:
-            inp_sol_id = st.text_input(
-                "No. Interno (SOL):",
-                value=sol_id,
-                help="Número consecutivo interno SOL-XXXXX"
-            )
-        with c_f2:
-            inp_req_id = st.text_input(
-                "No. Requisición SAI:",
-                value=dossier_id,
-                help="Folio oficial del sistema SAI (ej. REQ-22008)"
-            )
-        with c_f3:
-            st_idx = TODOS_ESTATUS.index(matched_status) if matched_status in TODOS_ESTATUS else 0
-            inp_estatus = st.selectbox(
-                "Estatus / Etapa Actual:",
-                options=TODOS_ESTATUS,
-                index=st_idx,
-                format_func=lambda s: f"{STATUS_CONFIG.get(s, {}).get('icon', '')} {s}"
-            )
-        with c_f4:
-            cur_prio = req_info.get("prioridad", "Media")
-            if cur_prio not in prioridades_list:
-                prioridades_list.append(cur_prio)
-            prio_idx = prioridades_list.index(cur_prio) if cur_prio in prioridades_list else 1
-            inp_prioridad = st.selectbox(
-                "Prioridad:",
-                options=prioridades_list,
-                index=prio_idx
+    # DISPOSICIÓN A 2 COLUMNAS: Izquierda = Documento Preliminar (PDF), Derecha = Ajuste de Campos y Guardar
+    col_pdf, col_form = st.columns([1.1, 1.25])
+
+    # -------------------------------------------------------------------------
+    # COLUMNA 1: VISTA PRELIMINAR DEL DOCUMENTO (PDF)
+    # -------------------------------------------------------------------------
+    with col_pdf:
+        st.markdown("##### 📄 Documento Preliminar (PDF Original)")
+        if pdf_file and pdf_file.exists():
+            with open(pdf_file, "rb") as f_pdf:
+                pdf_bytes = f_pdf.read()
+
+            st.download_button(
+                label="⬇️ Descargar PDF Original",
+                data=pdf_bytes,
+                file_name=pdf_file.name,
+                mime="application/pdf",
+                key=f"dl_pdf_preview_{dossier_id}",
+                use_container_width=True
             )
 
-        st.markdown("##### 👤 Solicitante, Área y Fechas")
-        c_f5, c_f6, c_f7 = st.columns([1.8, 1.4, 1.1])
-        with c_f5:
+            with st.container(height=680):
+                if fitz:
+                    try:
+                        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                        for page_num in range(len(doc)):
+                            if len(doc) > 1:
+                                st.caption(f"📄 Página {page_num + 1} de {len(doc)}")
+                            page = doc[page_num]
+                            pix = page.get_pixmap(dpi=140)
+                            img_bytes = pix.tobytes("png")
+                            st.image(img_bytes, use_container_width=True)
+                    except Exception:
+                        b64 = base64.b64encode(pdf_bytes).decode("utf-8")
+                        st.markdown(f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="640" style="border:1px solid #CBD5E1; border-radius:6px;"></iframe>', unsafe_allow_html=True)
+                else:
+                    b64 = base64.b64encode(pdf_bytes).decode("utf-8")
+                    st.markdown(f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="640" style="border:1px solid #CBD5E1; border-radius:6px;"></iframe>', unsafe_allow_html=True)
+        else:
+            st.info("ℹ️ No se ha encontrado el archivo PDF original de esta requisición.")
+            uploaded_pdf = st.file_uploader("Adjuntar PDF de Requisición:", type=["pdf"], key=f"upload_pdf_{dossier_id}")
+            if uploaded_pdf:
+                target_pdf_path = req_dir / f"requisicion_{dossier_id}.pdf"
+                with open(target_pdf_path, "wb") as f_out:
+                    f_out.write(uploaded_pdf.getbuffer())
+                update_requisicion_detalles(dossier_id, nueva_descripcion=None)
+                st.toast("✅ PDF adjuntado correctamente", icon="📄")
+                st.rerun()
+
+    # -------------------------------------------------------------------------
+    # COLUMNA 2: FORMULARIO Y AJUSTE DE INFORMACIÓN
+    # -------------------------------------------------------------------------
+    with col_form:
+        st.markdown("##### ✏️ Ajuste de Información")
+        with st.form(key=f"form_expediente_{dossier_id}"):
+            c_f1, c_f2 = st.columns(2)
+            with c_f1:
+                inp_sol_id = st.text_input("No. Interno (SOL):", value=sol_id, help="Consecutivo interno SOL-XXXXX")
+            with c_f2:
+                inp_req_id = st.text_input("No. Requisición SAI:", value=dossier_id, help="Folio oficial del SAI")
+
+            c_f3, c_f4 = st.columns([1.6, 1])
+            with c_f3:
+                st_idx = TODOS_ESTATUS.index(matched_status) if matched_status in TODOS_ESTATUS else 0
+                inp_estatus = st.selectbox(
+                    "Estatus / Etapa Actual:",
+                    options=TODOS_ESTATUS,
+                    index=st_idx,
+                    format_func=lambda s: f"{STATUS_CONFIG.get(s, {}).get('icon', '')} {s}"
+                )
+            with c_f4:
+                cur_prio = req_info.get("prioridad", "Media")
+                if cur_prio not in prioridades_list:
+                    prioridades_list.append(cur_prio)
+                prio_idx = prioridades_list.index(cur_prio) if cur_prio in prioridades_list else 1
+                inp_prioridad = st.selectbox("Prioridad:", options=prioridades_list, index=prio_idx)
+
             cur_solicitante = str(req_info.get("solicitante", "") or "").strip()
             if cur_solicitante and cur_solicitante not in solicitantes_list:
                 solicitantes_list.insert(0, cur_solicitante)
             sol_idx = solicitantes_list.index(cur_solicitante) if cur_solicitante in solicitantes_list else 0
-            inp_solicitante = st.selectbox(
-                "Solicitante:",
-                options=solicitantes_list,
-                index=sol_idx
+            inp_solicitante = st.selectbox("Solicitante:", options=solicitantes_list, index=sol_idx)
+
+            c_f6, c_f7 = st.columns([1.4, 1.1])
+            with c_f6:
+                cur_area = str(req_info.get("area_impacto", "") or "").strip()
+                if cur_area and cur_area not in areas_list:
+                    areas_list.insert(0, cur_area)
+                area_idx = areas_list.index(cur_area) if cur_area in areas_list else 0
+                inp_area = st.selectbox("Área de Impacto:", options=areas_list, index=area_idx)
+            with c_f7:
+                inp_fecha = st.text_input("Fecha Solicitud:", value=str(req_info.get("fecha_requisicion", "") or ""))
+
+            c_f8, c_f9, c_f10 = st.columns([1.2, 1, 1.2])
+            with c_f8:
+                m_est_val = float(req_info.get("monto_estimado", 0.0) or 0.0)
+                inp_monto_est = st.number_input("Monto Estimado ($):", value=m_est_val, min_value=0.0, step=100.0, format="%.2f")
+            with c_f9:
+                cur_mon = str(req_info.get("moneda", "MXN") or "MXN").strip()
+                if cur_mon not in monedas_list:
+                    monedas_list.append(cur_mon)
+                mon_idx = monedas_list.index(cur_mon) if cur_mon in monedas_list else 0
+                inp_moneda = st.selectbox("Moneda:", options=monedas_list, index=mon_idx)
+            with c_f10:
+                m_po_val = float(req_info.get("monto_po", 0.0) or 0.0)
+                inp_monto_po = st.number_input("Monto PO ($):", value=m_po_val, min_value=0.0, step=100.0, format="%.2f")
+
+            inp_desc = st.text_area(
+                "Descripción Breve / Concepto:",
+                value=str(req_info.get("descripcion_breve", "") or ""),
+                height=80,
+                help="Concepto o descripción detallada de lo que se requiere comprar o fabricar."
             )
-        with c_f6:
-            cur_area = str(req_info.get("area_impacto", "") or "").strip()
-            if cur_area and cur_area not in areas_list:
-                areas_list.insert(0, cur_area)
-            area_idx = areas_list.index(cur_area) if cur_area in areas_list else 0
-            inp_area = st.selectbox(
-                "Área de Impacto:",
-                options=areas_list,
-                index=area_idx
-            )
-        with c_f7:
-            inp_fecha = st.text_input(
-                "Fecha Solicitud:",
-                value=str(req_info.get("fecha_requisicion", "") or ""),
-                help="Formato AAAA-MM-DD"
+            inp_just = st.text_area(
+                "Justificación / Motivo:",
+                value=str(req_info.get("justificacion", "") or ""),
+                height=55
             )
 
-        st.markdown("##### 💰 Importes y Moneda")
-        c_f8, c_f9, c_f10 = st.columns([1.2, 1, 1.2])
-        with c_f8:
-            m_est_val = float(req_info.get("monto_estimado", 0.0) or 0.0)
-            inp_monto_est = st.number_input(
-                "Monto Estimado ($):",
-                value=m_est_val,
-                min_value=0.0,
-                step=100.0,
-                format="%.2f"
-            )
-        with c_f9:
-            cur_mon = str(req_info.get("moneda", "MXN") or "MXN").strip()
-            if cur_mon not in monedas_list:
-                monedas_list.append(cur_mon)
-            mon_idx = monedas_list.index(cur_mon) if cur_mon in monedas_list else 0
-            inp_moneda = st.selectbox(
-                "Moneda:",
-                options=monedas_list,
-                index=mon_idx
-            )
-        with c_f10:
-            m_po_val = float(req_info.get("monto_po", 0.0) or 0.0)
-            inp_monto_po = st.number_input(
-                "Monto PO ($):",
-                value=m_po_val,
-                min_value=0.0,
-                step=100.0,
-                format="%.2f"
+            c_po1, c_po2 = st.columns([1.1, 1.5])
+            with c_po1:
+                inp_folio_po = st.text_input("Folio de PO:", value=str(req_info.get("folio_po", "") or ""))
+            with c_po2:
+                cur_prov = str(req_info.get("proveedor_seleccionado", "") or req_info.get("proveedor_po", "") or "")
+                inp_proveedor = st.text_input("Proveedor Ganador / Asignado:", value=cur_prov)
+
+            c_po3, c_po4 = st.columns(2)
+            with c_po3:
+                inp_fecha_po = st.text_input("Fecha de PO:", value=str(req_info.get("fecha_po", "") or ""))
+            with c_po4:
+                inp_notas = st.text_input("Notas de Auditoría:", value=str(req_info.get("notas_auditoria", "") or ""))
+
+            paleta_ids = [c["id"] for c in PALETA_COLORES_ODOO]
+            cur_color_id = str(req_info.get("color_etiqueta", "blanco") or "blanco").strip().lower()
+            col_idx = paleta_ids.index(cur_color_id) if cur_color_id in paleta_ids else 0
+            inp_color_etiqueta = st.selectbox(
+                "🎨 Color de Etiqueta (Paleta Odoo):",
+                options=paleta_ids,
+                index=col_idx,
+                format_func=lambda cid: next((c["nombre"] for c in PALETA_COLORES_ODOO if c["id"] == cid), cid),
+                help="Asigna un color para destacar esta requisición en el tablero Kanban."
             )
 
-        st.markdown("##### 📝 Detalle y Justificación del Requerimiento")
-        inp_desc = st.text_area(
-            "Descripción Breve / Concepto:",
-            value=str(req_info.get("descripcion_breve", "") or ""),
-            height=85,
-            help="Texto detallado del concepto de compra o servicio requerido."
-        )
-        inp_just = st.text_area(
-            "Justificación / Motivo:",
-            value=str(req_info.get("justificacion", "") or ""),
-            height=65,
-            help="Justificación operativa para la compra."
-        )
-
-        st.markdown("##### 📦 Datos de Orden de Compra (PO) y Trazabilidad")
-        c_po1, c_po2, c_po3 = st.columns([1.2, 1.8, 1.2])
-        with c_po1:
-            inp_folio_po = st.text_input(
-                "Folio de PO:",
-                value=str(req_info.get("folio_po", "") or ""),
-                help="Ejemplo: PO-23097"
-            )
-        with c_po2:
-            cur_prov = str(req_info.get("proveedor_seleccionado", "") or req_info.get("proveedor_po", "") or "")
-            inp_proveedor = st.text_input(
-                "Proveedor Ganador / Asignado:",
-                value=cur_prov
-            )
-        with c_po3:
-            inp_fecha_po = st.text_input(
-                "Fecha de PO:",
-                value=str(req_info.get("fecha_po", "") or ""),
-                help="Fecha de emisión de la PO"
+            st.write("")
+            btn_submit = st.form_submit_button(
+                "💾 GUARDAR INFORMACIÓN DE LA REQUISICIÓN",
+                type="primary",
+                use_container_width=True
             )
 
-        inp_notas = st.text_area(
-            "Notas de Auditoría y Seguimiento:",
-            value=str(req_info.get("notas_auditoria", "") or ""),
-            height=65
-        )
+            if btn_submit:
+                clean_req = normalize_req_id(inp_req_id)
+                clean_sol = inp_sol_id.strip().upper()
+                
+                updated_data = {
+                    "id_requisicion": clean_req,
+                    "folio_solicitud": clean_sol,
+                    "fecha_requisicion": inp_fecha.strip(),
+                    "solicitante": inp_solicitante.strip(),
+                    "area_impacto": inp_area.strip(),
+                    "descripcion_breve": inp_desc.strip(),
+                    "justificacion": inp_just.strip(),
+                    "prioridad": inp_prioridad,
+                    "estatus": inp_estatus,
+                    "color_etiqueta": inp_color_etiqueta,
+                    "proveedor_seleccionado": inp_proveedor.strip(),
+                    "proveedor_po": inp_proveedor.strip(),
+                    "monto_estimado": float(inp_monto_est),
+                    "moneda": inp_moneda,
+                    "num_cotizaciones": req_info.get("num_cotizaciones", 0),
+                    "folio_po": inp_folio_po.strip(),
+                    "fecha_po": inp_fecha_po.strip(),
+                    "monto_po": float(inp_monto_po),
+                    "fecha_autorizacion": req_info.get("fecha_autorizacion", ""),
+                    "autorizado_por": req_info.get("autorizado_por", ""),
+                    "archivo_requisicion_pdf": req_info.get("archivo_requisicion_pdf", ""),
+                    "archivo_eml": req_info.get("archivo_eml", ""),
+                    "archivo_po": req_info.get("archivo_po", ""),
+                    "notas_auditoria": inp_notas.strip(),
+                    "fecha_registro": req_info.get("fecha_registro", "")
+                }
 
-        st.write("")
-        btn_submit = st.form_submit_button(
-            "💾 GUARDAR INFORMACIÓN DE LA REQUISICIÓN",
-            type="primary",
-            use_container_width=True
-        )
-
-        if btn_submit:
-            clean_req = normalize_req_id(inp_req_id)
-            clean_sol = inp_sol_id.strip().upper()
-            
-            updated_data = {
-                "id_requisicion": clean_req,
-                "folio_solicitud": clean_sol,
-                "fecha_requisicion": inp_fecha.strip(),
-                "solicitante": inp_solicitante.strip(),
-                "area_impacto": inp_area.strip(),
-                "descripcion_breve": inp_desc.strip(),
-                "justificacion": inp_just.strip(),
-                "prioridad": inp_prioridad,
-                "estatus": inp_estatus,
-                "proveedor_seleccionado": inp_proveedor.strip(),
-                "proveedor_po": inp_proveedor.strip(),
-                "monto_estimado": float(inp_monto_est),
-                "moneda": inp_moneda,
-                "num_cotizaciones": req_info.get("num_cotizaciones", 0),
-                "folio_po": inp_folio_po.strip(),
-                "fecha_po": inp_fecha_po.strip(),
-                "monto_po": float(inp_monto_po),
-                "fecha_autorizacion": req_info.get("fecha_autorizacion", ""),
-                "autorizado_por": req_info.get("autorizado_por", ""),
-                "archivo_requisicion_pdf": req_info.get("archivo_requisicion_pdf", ""),
-                "archivo_eml": req_info.get("archivo_eml", ""),
-                "archivo_po": req_info.get("archivo_po", ""),
-                "notas_auditoria": inp_notas.strip(),
-                "fecha_registro": req_info.get("fecha_registro", "")
-            }
-
-            if save_requisicion(updated_data):
-                st.toast(f"✅ Requisición {clean_req} guardada exitosamente", icon="💾")
-                st.success(f"✅ ¡Información de {clean_req} actualizada y sincronizada!")
-                st.rerun()
-            else:
-                st.error("❌ Ocurrió un error al guardar los cambios en la base de datos.")
+                if save_requisicion(updated_data):
+                    st.toast(f"✅ Requisición {clean_req} guardada exitosamente", icon="💾")
+                    st.success(f"✅ ¡Información de {clean_req} actualizada y sincronizada!")
+                    st.rerun()
+                else:
+                    st.error("❌ Ocurrió un error al guardar los cambios en la base de datos.")
 
     # =========================================================================
     # COTIZACIONES ASOCIADAS
@@ -1236,10 +1264,22 @@ def render_dashboard(force_view: Optional[str] = None):
                         po_badge = f"""<div style="font-size:10px; color:#047857; font-weight:bold; margin-top:3px;">PO: {row['folio_po']}</div>""" if row.get("folio_po") else ""
                         sol_badge = f"""<span style="font-size:9.5px; font-weight:800; color:#0F172A; background-color:#F1F5F9; border:1px solid #CBD5E1; padding:1px 4px; border-radius:3px; margin-right:4px;">{sol_id}</span>""" if sol_id else ""
 
+                        color_val = str(row.get("color_etiqueta", "") or "").strip().lower()
+                        card_bg = "#FFFFFF"
+                        card_border_left = "3px solid #E2E8F0"
+                        color_badge = ""
+                        for c in PALETA_COLORES_ODOO:
+                            if c["id"] == color_val or c["color"].lower() == color_val:
+                                if c["id"] != "blanco":
+                                    card_bg = c["bg"]
+                                    card_border_left = f"6px solid {c['color']}"
+                                    color_badge = f"""<span style="display:inline-block; width:9px; height:9px; border-radius:50%; background-color:{c['color']}; margin-right:5px; vertical-align:middle;"></span>"""
+                                break
+
                         st.markdown(f"""
-                        <div class="kanban-card">
+                        <div class="kanban-card" style="background-color:{card_bg} !important; border-left:{card_border_left} !important;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div>{sol_badge}<span style="font-weight:900; font-size:12px; color:#EC2024;">{req_id}</span></div>
+                                <div>{color_badge}{sol_badge}<span style="font-weight:900; font-size:12px; color:#EC2024;">{req_id}</span></div>
                                 <span style="background-color:#F1F5F9; color:#475569; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px;">{sol.split('(')[0][:16]}</span>
                             </div>
                             <div style="font-size:11.5px; color:#1E293B; margin-top:5px; font-weight:600; line-height:1.25;">
@@ -1285,16 +1325,29 @@ def render_dashboard(force_view: Optional[str] = None):
                                     st.toast(f"▶ {sol_id or req_id} avanzada a '{next_state}'", icon="🚀")
                                     st.rerun()
 
-                        # Popover para reasignar directamente a cualquiera de las 7 fases
-                        with st.popover("⚙️ Mover...", use_container_width=True):
-                            st.caption(f"Reasignar etapa de {sol_id or req_id}:")
-                            for s_name in TODOS_ESTATUS:
-                                if s_name != cur_state_val:
-                                    s_icon = STATUS_CONFIG.get(s_name, {}).get("icon", "•")
-                                    if st.button(f"{s_icon} {s_name}", key=f"pop_mv_{req_id}_{s_name}", use_container_width=True):
-                                        update_requisicion_detalles(req_id, nuevo_estatus=s_name)
-                                        st.toast(f"🔄 {sol_id or req_id} movida a '{s_name}'", icon="🚀")
-                                        st.rerun()
+                        # Controles de Etapa y Paleta de Colores
+                        k_pop1, k_pop2 = st.columns([1.1, 1.1])
+                        with k_pop1:
+                            with st.popover("⚙️ Etapa", use_container_width=True):
+                                st.caption(f"Reasignar etapa:")
+                                for s_name in TODOS_ESTATUS:
+                                    if s_name != cur_state_val:
+                                        s_icon = STATUS_CONFIG.get(s_name, {}).get("icon", "•")
+                                        if st.button(f"{s_icon} {s_name}", key=f"pop_mv_{req_id}_{s_name}", use_container_width=True):
+                                            update_requisicion_detalles(req_id, nuevo_estatus=s_name)
+                                            st.toast(f"🔄 {sol_id or req_id} movida a '{s_name}'", icon="🚀")
+                                            st.rerun()
+
+                        with k_pop2:
+                            with st.popover("🎨 Color", use_container_width=True):
+                                st.caption("Color de tarjeta:")
+                                col_g1, col_g2, col_g3 = st.columns(3)
+                                for idx_c, c_item in enumerate(PALETA_COLORES_ODOO):
+                                    with [col_g1, col_g2, col_g3][idx_c % 3]:
+                                        if st.button(c_item["nombre"].split()[0], key=f"btn_card_col_{req_id}_{c_item['id']}", help=c_item["nombre"], use_container_width=True):
+                                            update_requisicion_detalles(req_id, nuevo_color=c_item["id"])
+                                            st.toast(f"🎨 Color '{c_item['nombre']}' asignado", icon="✅")
+                                            st.rerun()
 
     # =========================================================================
     # EXPEDIENTE DIGITAL PERMANENTE Y DESCARGA EN 1 CLIC
