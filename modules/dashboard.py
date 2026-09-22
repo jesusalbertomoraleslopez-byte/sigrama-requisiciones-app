@@ -61,7 +61,7 @@ from email_generator import (
 import streamlit.components.v1 as components
 
 KANBAN_COMPONENT_PATH = Path(__file__).resolve().parent.parent / "components" / "odoo_kanban"
-_odoo_kanban_comp = components.declare_component("odoo_kanban", path=str(KANBAN_COMPONENT_PATH))
+_odoo_kanban_comp = components.declare_component("odoo_kanban_v2", path=str(KANBAN_COMPONENT_PATH))
 
 
 @st.dialog("📋 Expediente y Ajuste de Requisición", width="large")
@@ -1343,7 +1343,8 @@ def render_dashboard(force_view: Optional[str] = None):
         kanban_event = _odoo_kanban_comp(
             columns=kanban_columns_payload,
             total_count=len(df_kanban),
-            key="odoo_kanban_component_v1"
+            key="odoo_kanban_component_v2",
+            default=None
         )
 
         # Captura y ejecución de eventos interactivos enviados desde SortableJS

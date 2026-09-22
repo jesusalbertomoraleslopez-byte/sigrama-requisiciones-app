@@ -82,6 +82,10 @@ function renderKanbanBoard(columns, totalCount) {
     sortableInstances = [];
     boardContainer.innerHTML = "";
 
+    if (localStorage.getItem("sigrama_kanban_compact") === "true") {
+        boardContainer.classList.add("compact-mode");
+    }
+
     const foldedStages = JSON.parse(localStorage.getItem("sigrama_folded_stages") || "[]");
 
     columns.forEach(col => {
@@ -324,7 +328,9 @@ function setupScrollControls() {
 
     const btnLeft = document.getElementById("btnScrollLeft");
     const btnRight = document.getElementById("btnScrollRight");
+    const btnCompact = document.getElementById("btnToggleCompact");
     const wrapper = document.getElementById("kanbanScrollWrapper");
+    const boardEl = document.getElementById("kanbanBoard");
     if (!wrapper) return;
 
     if (btnLeft) {
@@ -337,6 +343,21 @@ function setupScrollControls() {
         btnRight.onclick = (e) => {
             e.preventDefault();
             wrapper.scrollBy({ left: 320, behavior: 'smooth' });
+        };
+    }
+    if (btnCompact && boardEl) {
+        const isCompact = localStorage.getItem("sigrama_kanban_compact") === "true";
+        if (isCompact) {
+            boardEl.classList.add("compact-mode");
+            btnCompact.textContent = "📐 Estándar";
+            btnCompact.title = "Volver al ancho estándar de 280px";
+        }
+        btnCompact.onclick = (e) => {
+            e.preventDefault();
+            const nowCompact = boardEl.classList.toggle("compact-mode");
+            btnCompact.textContent = nowCompact ? "📐 Estándar" : "📐 Compacto";
+            btnCompact.title = nowCompact ? "Volver al ancho estándar de 280px" : "Alternar ancho compacto para ver todas las columnas";
+            localStorage.setItem("sigrama_kanban_compact", nowCompact ? "true" : "false");
         };
     }
 
