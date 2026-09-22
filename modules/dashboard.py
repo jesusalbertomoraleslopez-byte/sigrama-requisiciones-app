@@ -892,17 +892,18 @@ def render_dashboard(force_view: Optional[str] = None):
                         sol_badge = f"""<span style="font-size:9.5px; font-weight:800; color:#0F172A; background-color:#F1F5F9; border:1px solid #CBD5E1; padding:1px 4px; border-radius:3px; margin-right:4px;">{sol_id}</span>""" if sol_id else ""
 
                         st.markdown(f"""
-                        <div style="background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:6px; padding:10px 8px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                        <div class="kanban-card">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div>{sol_badge}<span style="font-weight:900; font-size:11.5px; color:#EC2024;">{req_id}</span></div>
+                                <div>{sol_badge}<span style="font-weight:900; font-size:12px; color:#EC2024;">{req_id}</span></div>
+                                <span style="background-color:#F1F5F9; color:#475569; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px;">{sol.split('(')[0][:16]}</span>
                             </div>
-                            <div style="font-size:11px; color:#334155; margin-top:4px; font-weight:600; line-height:1.2;">
-                                {desc[:45]}{'...' if len(desc) > 45 else ''}
+                            <div style="font-size:11.5px; color:#1E293B; margin-top:5px; font-weight:600; line-height:1.25;">
+                                {desc[:48]}{'...' if len(desc) > 48 else ''}
                             </div>
                             <div style="font-size:10px; color:#64748B; margin-top:4px;">
                                 📍 {area}
                             </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:4px; border-top:1px dashed #E2E8F0; font-size:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:4px; border-top:1px dashed #E2E8F0; font-size:10.5px;">
                                 <span style="font-weight:800; color:#0F172A;">${float(monto):,.0f}</span>
                                 <span style="color:#64748B;">📑 {num_cot}</span>
                             </div>

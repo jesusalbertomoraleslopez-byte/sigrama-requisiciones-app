@@ -229,6 +229,25 @@ st.markdown("""
         font-family: 'Montserrat', sans-serif !important;
     }
 
+    /* Efecto de Magnificación estilo Mac / Odoo CRM para tarjetas Kanban */
+    .kanban-card {
+        background-color: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        padding: 10px 10px;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+        cursor: grab;
+        position: relative;
+    }
+    .kanban-card:hover {
+        transform: scale(1.04) translateY(-2px) !important;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12) !important;
+        border-color: #EC2024 !important;
+        z-index: 10;
+    }
+
     /* File uploader limpio sin duplicaciones */
     section[data-testid="stFileUploaderDropzone"] {
         border: 2px dashed #CBD5E1 !important;
