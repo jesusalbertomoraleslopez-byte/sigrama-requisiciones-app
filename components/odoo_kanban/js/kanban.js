@@ -63,9 +63,12 @@ function renderKanbanBoard(columns, totalCount) {
     sortableInstances = [];
     boardContainer.innerHTML = "";
 
+    const foldedStages = JSON.parse(localStorage.getItem("sigrama_folded_stages") || "[]");
+
     columns.forEach(col => {
+        const isFolded = foldedStages.includes(col.id);
         const columnEl = document.createElement("div");
-        columnEl.className = "kanban-column";
+        columnEl.className = `kanban-column ${isFolded ? "folded" : ""}`;
         columnEl.dataset.stageId = col.id;
 
         const formattedTotal = new Intl.NumberFormat('es-MX', {
@@ -81,7 +84,10 @@ function renderKanbanBoard(columns, totalCount) {
                     <span class="column-title" style="color: ${col.accent};">
                         <span>${col.icon}</span> ${col.short_title}
                     </span>
-                    <span class="column-badge" id="badge-${col.id}">${col.cards.length}</span>
+                    <div class="column-actions">
+                        <span class="column-badge" id="badge-${col.id}">${col.cards.length}</span>
+                        <button class="column-fold-btn" onclick="toggleFoldStage('${col.id}', event)" title="${isFolded ? 'Expandir columna' : 'Contraer columna'}">${isFolded ? '▶' : '◀'}</button>
+                    </div>
                 </div>
                 <div class="column-metrics-row">
                     <span style="font-size: 11px; color: #64748B;">Subtotal:</span>
@@ -93,6 +99,13 @@ function renderKanbanBoard(columns, totalCount) {
             </div>
             <div class="kanban-cards-dropzone" id="dropzone-${col.id}" data-stage-id="${col.id}" data-db-status="${col.db_status}"></div>
         `;
+
+        // Al hacer clic sobre una columna contraída se vuelve a expandir automáticamente
+        columnEl.addEventListener("click", (e) => {
+            if (columnEl.classList.contains("folded")) {
+                toggleFoldStage(col.id, e);
+            }
+        });
 
         const dropzoneEl = columnEl.querySelector(".kanban-cards-dropzone");
 
@@ -130,6 +143,7 @@ function renderKanbanBoard(columns, totalCount) {
                     // Notificar inmediatamente a Python (Streamlit)
                     sendValueToStreamlit({
                         action: "move_stage",
+                        event_id: Date.now() + "_" + Math.random().toString(36).substring(2, 9),
                         req_id: reqId,
                         old_stage: fromColId,
                         new_stage: toColId,
@@ -214,6 +228,7 @@ function openExpedienteModal(reqId) {
     // Notificar a Streamlit para abrir la modal nativa @st.dialog
     sendValueToStreamlit({
         action: "open_modal",
+        event_id: Date.now() + "_" + Math.random().toString(36).substring(2, 9),
         req_id: reqId
     });
 }
@@ -223,3 +238,38 @@ function escapeHtml(text) {
     div.innerText = text;
     return div.innerHTML;
 }
+
+// ==========================================================================
+// 4. PLEGAR / CONTRAER COLUMNA (ESTILO ODOO CRM)
+// ==========================================================================
+window.toggleFoldStage = function(stageId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    const colEl = document.querySelector(`.kanban-column[data-stage-id="${stageId}"]`);
+    if (!colEl) return;
+
+    const isNowFolded = colEl.classList.toggle("folded");
+
+    // Actualizar icono y tooltip del botón
+    const btn = colEl.querySelector(".column-fold-btn");
+    if (btn) {
+        btn.textContent = isNowFolded ? "▶" : "◀";
+        btn.title = isNowFolded ? "Expandir columna" : "Contraer columna";
+    }
+
+    // Persistir estado en localStorage del navegador del usuario
+    try {
+        let stored = JSON.parse(localStorage.getItem("sigrama_folded_stages") || "[]");
+        if (!Array.isArray(stored)) stored = [];
+        if (isNowFolded) {
+            if (!stored.includes(stageId)) stored.push(stageId);
+        } else {
+            stored = stored.filter(id => id !== stageId);
+        }
+        localStorage.setItem("sigrama_folded_stages", JSON.stringify(stored));
+    } catch (err) {
+        console.warn("No se pudo guardar estado plegado en localStorage:", err);
+    }
+};
+

@@ -1228,8 +1228,42 @@ def render_dashboard(force_view: Optional[str] = None):
             {"id": "congelada", "title": "CONGELADA", "icon": "🧊", "db_status": ESTATUS_CONGELADA, "color": "#06B6D4", "accent": "#0E7490"},
         ]
 
+        # Selector interactivo para activar / desactivar columnas visibles en el tablero
+        stage_names_all = [f"{s['icon']} {s['title']}" for s in STAGE_DEFS]
+        if "kanban_stage_filter" not in st.session_state:
+            st.session_state["kanban_stage_filter"] = stage_names_all
+
+        def _cb_set_solo_activas():
+            st.session_state["kanban_stage_filter"] = [
+                f"{s['icon']} {s['title']}" for s in STAGE_DEFS
+                if s["id"] in ["cotizacion", "pendiente", "autorizada", "con_po"]
+            ]
+
+        def _cb_set_todas():
+            st.session_state["kanban_stage_filter"] = stage_names_all
+
+        c_vis1, c_vis2 = st.columns([3.2, 1.6])
+        with c_vis1:
+            selected_stage_names = st.multiselect(
+                "👁️ Activar / Desactivar Columnas Visibles:",
+                options=stage_names_all,
+                key="kanban_stage_filter",
+                help="Selecciona qué columnas mostrar en el tablero. Por ejemplo, desmarca '🧊 CONGELADA' o '✅ TERMINADA' para ocultarlas del tablero."
+            )
+        with c_vis2:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            b1, b2 = st.columns(2)
+            with b1:
+                st.button("⚡ Solo Activas", on_click=_cb_set_solo_activas, help="Mostrar solo Cotización, Pendiente, Autorizada y Con PO", use_container_width=True)
+            with b2:
+                st.button("🌐 Todas (7)", on_click=_cb_set_todas, help="Restaurar las 7 fases del pipeline", use_container_width=True)
+
+        active_stage_defs = [s for s in STAGE_DEFS if f"{s['icon']} {s['title']}" in (selected_stage_names or stage_names_all)]
+        if not active_stage_defs:
+            active_stage_defs = STAGE_DEFS
+
         kanban_columns_payload = []
-        for s_def in STAGE_DEFS:
+        for s_def in active_stage_defs:
             state_key = s_def["db_status"]
             if state_key == ESTATUS_ARCHIVADA:
                 items_in_state = df_kanban[df_kanban["estatus"].isin([ESTATUS_ARCHIVADA, "Archivado Histórico"])]
@@ -1301,7 +1335,7 @@ def render_dashboard(force_view: Optional[str] = None):
 
         st.markdown("""
         <div style="background: rgba(236,32,36,0.06); border-left: 4px solid #EC2024; padding: 8px 14px; border-radius: 4px; margin-bottom: 10px; font-size: 12.5px; color: #1E293B;">
-            🖐️ <b>Movilidad Total (Drag & Drop):</b> Arrastra y suelta libremente cualquier tarjeta Post-it entre las 7 columnas para cambiar su estatus en tiempo real. Haz doble clic o pulsa <b>[👁️ Abrir Expediente]</b> para ver el expediente completo.
+            🖐️ <b>Movilidad Total (Drag & Drop):</b> Arrastra y suelta tarjetas entre las columnas para cambiar su estatus en tiempo real. Pulsa el botón <b>◀</b> en la cabecera para contraer columnas (ej. Congelada o Terminada) o usa el selector superior para activarlas/ocultarlas. Haz doble clic o pulsa <b>[👁️ Abrir Expediente]</b> para ver el expediente completo.
         </div>
         """, unsafe_allow_html=True)
 
@@ -1314,18 +1348,22 @@ def render_dashboard(force_view: Optional[str] = None):
 
         # Captura y ejecución de eventos interactivos enviados desde SortableJS
         if kanban_event and isinstance(kanban_event, dict):
-            action = kanban_event.get("action")
-            if action == "move_stage":
-                target_req = kanban_event.get("req_id")
-                new_status = kanban_event.get("new_db_status")
-                if target_req and new_status:
-                    if update_requisicion_detalles(target_req, nuevo_estatus=new_status):
-                        st.toast(f"✅ {target_req} movida a etapa: {new_status}", icon="✅")
-                        st.rerun()
-            elif action == "open_modal":
-                target_req = kanban_event.get("req_id")
-                if target_req:
-                    modal_ver_expediente(target_req)
+            event_id = kanban_event.get("event_id")
+            last_event_id = st.session_state.get("_last_processed_kanban_event_id")
+            if event_id and event_id != last_event_id:
+                st.session_state["_last_processed_kanban_event_id"] = event_id
+                action = kanban_event.get("action")
+                if action == "move_stage":
+                    target_req = kanban_event.get("req_id")
+                    new_status = kanban_event.get("new_db_status")
+                    if target_req and new_status:
+                        if update_requisicion_detalles(target_req, nuevo_estatus=new_status):
+                            st.toast(f"✅ {target_req} movida a etapa: {new_status}", icon="✅")
+                            st.rerun()
+                elif action == "open_modal":
+                    target_req = kanban_event.get("req_id")
+                    if target_req:
+                        modal_ver_expediente(target_req)
 
     # =========================================================================
     # EXPEDIENTE DIGITAL PERMANENTE Y DESCARGA EN 1 CLIC

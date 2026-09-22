@@ -307,24 +307,13 @@ def load_requisiciones() -> pd.DataFrame:
         
         # Rellenar nulos y conciliar integridad consecutiva
         df = df.fillna("")
-        modified = False
-        
         # Normalizar ID de requisición y garantizar unicidad absoluta
         if "id_requisicion" in df.columns:
             df["id_requisicion"] = df["id_requisicion"].apply(normalize_req_id)
             if df["id_requisicion"].duplicated().any():
                 df = df.drop_duplicates(subset=["id_requisicion"], keep="last")
-                modified = True
 
         df, rep_mod = reconcile_sol_consecutivos(df)
-        if rep_mod:
-            modified = True
-
-        if modified:
-            try:
-                _atomic_write_excel(df, EXCEL_REQUISICIONES_PATH)
-            except Exception:
-                pass
         return df
     except Exception as e:
         print(f"Error al cargar BD_Requisiciones: {e}")
@@ -432,16 +421,37 @@ def update_requisicion_detalles(
         return False
 
     idx = df[df["id_requisicion"] == norm_id].index[0]
+    changed = False
+
     if nueva_descripcion is not None:
-        df.at[idx, "descripcion_breve"] = str(nueva_descripcion or "").strip()
+        val_desc = str(nueva_descripcion or "").strip()
+        if val_desc != str(df.at[idx, "descripcion_breve"] or "").strip():
+            df.at[idx, "descripcion_breve"] = val_desc
+            changed = True
+
     if nueva_area is not None and str(nueva_area).strip():
-        df.at[idx, "area_impacto"] = str(nueva_area).strip()
+        val_area = str(nueva_area).strip()
+        if val_area != str(df.at[idx, "area_impacto"] or "").strip():
+            df.at[idx, "area_impacto"] = val_area
+            changed = True
+
     if nuevo_estatus is not None and str(nuevo_estatus).strip():
-        df.at[idx, "estatus"] = str(nuevo_estatus).strip()
+        val_estatus = str(nuevo_estatus).strip()
+        if val_estatus != str(df.at[idx, "estatus"] or "").strip():
+            df.at[idx, "estatus"] = val_estatus
+            changed = True
+
     if nuevo_color is not None:
         if "color_etiqueta" not in df.columns:
             df["color_etiqueta"] = ""
-        df.at[idx, "color_etiqueta"] = str(nuevo_color).strip()
+        val_col = str(nuevo_color).strip()
+        if val_col != str(df.at[idx, "color_etiqueta"] or "").strip():
+            df.at[idx, "color_etiqueta"] = val_col
+            changed = True
+
+    if not changed:
+        return True
+
     df.at[idx, "ultima_modificacion"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     _atomic_write_excel(df, EXCEL_REQUISICIONES_PATH)
     return True

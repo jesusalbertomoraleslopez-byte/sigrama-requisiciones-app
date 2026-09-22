@@ -113,6 +113,31 @@ body::-webkit-scrollbar-thumb:hover {
     letter-spacing: 0.3px;
 }
 
+.column-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.column-fold-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #94A3B8;
+    font-size: 11px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.column-fold-btn:hover {
+    background-color: #E2E8F0;
+    color: #0F172A;
+}
+
 .column-badge {
     background-color: #F1F5F9;
     color: #475569;
@@ -144,6 +169,77 @@ body::-webkit-scrollbar-thumb:hover {
     border-radius: 2px;
     margin-top: 6px;
     overflow: hidden;
+}
+
+/* ==========================================================================
+   ESTADO COLUMNA CONTRAÍDA (FOLDED COLUMN - ESTILO ODOO CRM)
+   ========================================================================== */
+.kanban-column.folded {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    cursor: pointer;
+    background-color: #F8FAFC;
+    border-color: #CBD5E1;
+    transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
+}
+
+.kanban-column.folded:hover {
+    background-color: #F1F5F9;
+    border-color: #94A3B8;
+}
+
+.kanban-column.folded .column-header {
+    padding: 14px 6px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    background-color: transparent;
+    border-bottom: none;
+    border-radius: 8px;
+}
+
+.kanban-column.folded .column-title-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 0;
+}
+
+.kanban-column.folded .column-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.kanban-column.folded .column-actions .column-fold-btn {
+    transform: rotate(180deg);
+}
+
+.kanban-column.folded .column-badge {
+    padding: 2px 5px;
+    font-size: 10px;
+}
+
+.kanban-column.folded .column-title {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    white-space: nowrap;
+    margin-top: 8px;
+}
+
+.kanban-column.folded .column-metrics-row,
+.kanban-column.folded .column-progress-bar,
+.kanban-column.folded .kanban-cards-dropzone {
+    display: none !important;
 }
 
 .column-progress-fill {
