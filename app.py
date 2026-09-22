@@ -314,6 +314,145 @@ st.markdown("""
     .badge-blue { background-color: #DBEAFE; color: #1D4ED8; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
     .badge-green { background-color: #D1FAE5; color: #047857; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
     .badge-gray { background-color: #F1F5F9; color: #475569; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
+
+    /* =====================================================================
+       MODAL EXPEDIENTE SIGRAMA — ALTO CONTRASTE (CSS GLOBAL v3.2)
+       Nota: se inyecta aqui para garantizar que siempre este cargado.
+       ===================================================================== */
+
+    /* Tamanio maximo del dialog */
+    div[data-testid="stDialog"] div[role="dialog"] {
+        width: 95vw !important;
+        max-width: 1500px !important;
+        min-height: 80vh !important;
+        max-height: 96vh !important;
+        overflow-y: auto !important;
+        background-color: #F8FAFC !important;
+        border: 2px solid #CBD5E1 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.4) !important;
+        padding: 20px 26px !important;
+    }
+
+    /* Encabezados dentro del modal */
+    div[data-testid="stDialog"] h5 {
+        font-size: 20px !important;
+        font-weight: 900 !important;
+        color: #0F172A !important;
+    }
+
+    /* LABELS — negro puro, grande, negrita */
+    div[data-testid="stDialog"] label,
+    div[data-testid="stDialog"] label p,
+    div[data-testid="stDialog"] label span,
+    div[data-testid="stDialog"] [data-testid="stWidgetLabel"] p {
+        font-size: 15px !important;
+        font-weight: 900 !important;
+        color: #0F172A !important;
+        opacity: 1 !important;
+    }
+
+    /* INPUTS — fondo blanco, texto negro oscuro */
+    div[data-testid="stDialog"] input[type="text"],
+    div[data-testid="stDialog"] input[type="number"],
+    div[data-testid="stDialog"] input {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        border: 2px solid #475569 !important;
+        border-radius: 6px !important;
+        padding: 8px 12px !important;
+        -webkit-text-fill-color: #0F172A !important;
+    }
+
+    /* TEXTAREAS — fondo blanco, texto negro oscuro */
+    div[data-testid="stDialog"] textarea {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        border: 2px solid #475569 !important;
+        border-radius: 6px !important;
+        -webkit-text-fill-color: #0F172A !important;
+    }
+
+    /* Contenedores BaseWeb de inputs */
+    div[data-testid="stDialog"] div[data-baseweb="input"],
+    div[data-testid="stDialog"] div[data-baseweb="input"] > div,
+    div[data-testid="stDialog"] div[data-baseweb="base-input"] {
+        background-color: #FFFFFF !important;
+        border: 2px solid #475569 !important;
+        border-radius: 6px !important;
+    }
+
+    /* SELECTBOX — texto negro sobre fondo blanco */
+    div[data-testid="stDialog"] div[data-baseweb="select"] > div,
+    div[data-testid="stDialog"] div[data-baseweb="select"] div[role="combobox"] {
+        background-color: #FFFFFF !important;
+        border: 2px solid #475569 !important;
+        border-radius: 6px !important;
+    }
+    div[data-testid="stDialog"] div[data-baseweb="select"] span,
+    div[data-testid="stDialog"] div[data-baseweb="select"] div,
+    div[data-testid="stDialog"] [data-testid="stSelectbox"] span {
+        color: #0F172A !important;
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        -webkit-text-fill-color: #0F172A !important;
+    }
+
+    /* Focus rojo SIGRAMA en campos activos */
+    div[data-testid="stDialog"] input:focus,
+    div[data-testid="stDialog"] textarea:focus,
+    div[data-testid="stDialog"] div[data-baseweb="input"]:focus-within,
+    div[data-testid="stDialog"] div[data-baseweb="select"]:focus-within > div {
+        border-color: #EC2024 !important;
+        box-shadow: 0 0 0 4px rgba(236,32,36,0.20) !important;
+        outline: none !important;
+    }
+
+    /* Boton GUARDAR — rojo SIGRAMA */
+    div[data-testid="stDialog"] [data-testid="stFormSubmitButton"] button,
+    div[data-testid="stDialog"] button[kind="primary"] {
+        background: #EC2024 !important;
+        color: #FFFFFF !important;
+        font-size: 17px !important;
+        font-weight: 900 !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 14px 24px !important;
+        box-shadow: 0 4px 16px rgba(236,32,36,0.40) !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        letter-spacing: 0.4px !important;
+    }
+    div[data-testid="stDialog"] [data-testid="stFormSubmitButton"] button:hover,
+    div[data-testid="stDialog"] button[kind="primary"]:hover {
+        background: #B91C1C !important;
+    }
+
+    /* Botones secundarios (zoom, maximizar, descargar) */
+    div[data-testid="stDialog"] button[kind="secondary"] {
+        background: #F1F5F9 !important;
+        color: #1E293B !important;
+        border: 2px solid #64748B !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        -webkit-text-fill-color: #1E293B !important;
+    }
+    div[data-testid="stDialog"] button[kind="secondary"]:hover {
+        border-color: #EC2024 !important;
+        color: #EC2024 !important;
+        -webkit-text-fill-color: #EC2024 !important;
+        background: #FEF2F2 !important;
+    }
+
+    /* Texto general del modal */
+    div[data-testid="stDialog"] p {
+        font-size: 15px !important;
+        color: #0F172A !important;
+        font-weight: 600 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
