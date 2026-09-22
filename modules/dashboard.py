@@ -1262,35 +1262,35 @@ def render_dashboard(force_view: Optional[str] = None):
                         monto = row["monto_po"] if state_key in [ESTATUS_PO_GENERADA, ESTATUS_TERMINADA, ESTATUS_ARCHIVADA] and row["monto_po"] > 0 else row["monto_estimado"]
                         
                         po_badge = f"""<div style="font-size:10px; color:#047857; font-weight:bold; margin-top:3px;">PO: {row['folio_po']}</div>""" if row.get("folio_po") else ""
-                        sol_badge = f"""<span style="font-size:9.5px; font-weight:800; color:#0F172A; background-color:#F1F5F9; border:1px solid #CBD5E1; padding:1px 4px; border-radius:3px; margin-right:4px;">{sol_id}</span>""" if sol_id else ""
-
                         color_val = str(row.get("color_etiqueta", "") or "").strip().lower()
                         card_bg = "#FFFFFF"
-                        card_border_left = "3px solid #E2E8F0"
-                        color_badge = ""
+                        card_border = "#CBD5E1"
+                        card_top = "#CBD5E1"
                         for c in PALETA_COLORES_ODOO:
                             if c["id"] == color_val or c["color"].lower() == color_val:
-                                if c["id"] != "blanco":
-                                    card_bg = c["bg"]
-                                    card_border_left = f"6px solid {c['color']}"
-                                    color_badge = f"""<span style="display:inline-block; width:9px; height:9px; border-radius:50%; background-color:{c['color']}; margin-right:5px; vertical-align:middle;"></span>"""
+                                card_bg = c["bg"]
+                                card_border = c["border"]
+                                card_top = c.get("top", c["color"])
                                 break
 
+                        sol_badge = f"""<span style="font-size:9.5px; font-weight:800; color:#0F172A; background-color:rgba(255,255,255,0.75); border:1px solid rgba(0,0,0,0.12); padding:1px 4px; border-radius:3px; margin-right:4px;">{sol_id}</span>""" if sol_id else ""
+                        sol_name_preview = sol.split('(')[0][:16]
+
                         st.markdown(f"""
-                        <div class="kanban-card" style="background-color:{card_bg} !important; border-left:{card_border_left} !important;">
+                        <div class="kanban-card" style="background-color:{card_bg} !important; border:1px solid {card_border} !important; border-top:6px solid {card_top} !important; box-shadow:0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04) !important;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div>{color_badge}{sol_badge}<span style="font-weight:900; font-size:12px; color:#EC2024;">{req_id}</span></div>
-                                <span style="background-color:#F1F5F9; color:#475569; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px;">{sol.split('(')[0][:16]}</span>
+                                <div>{sol_badge}<span style="font-weight:900; font-size:12px; color:#EC2024;">{req_id}</span></div>
+                                <span style="background-color:rgba(255,255,255,0.75); color:#1E293B; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; border:1px solid rgba(0,0,0,0.08);">{sol_name_preview}</span>
                             </div>
-                            <div style="font-size:11.5px; color:#1E293B; margin-top:5px; font-weight:600; line-height:1.25;">
+                            <div style="font-size:11.5px; color:#0F172A; margin-top:6px; font-weight:700; line-height:1.25;">
                                 {desc[:48]}{'...' if len(desc) > 48 else ''}
                             </div>
-                            <div style="font-size:10px; color:#64748B; margin-top:4px;">
+                            <div style="font-size:10px; color:#475569; margin-top:4px; font-weight:600;">
                                 📍 {area}
                             </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:4px; border-top:1px dashed #E2E8F0; font-size:10.5px;">
-                                <span style="font-weight:800; color:#0F172A;">${float(monto):,.0f}</span>
-                                <span style="color:#64748B;">📑 {num_cot}</span>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:4px; border-top:1px dashed rgba(0,0,0,0.15); font-size:10.5px;">
+                                <span style="font-weight:900; color:#0F172A;">${float(monto):,.0f}</span>
+                                <span style="color:#475569; font-weight:700;">📑 {num_cot}</span>
                             </div>
                             {po_badge}
                         </div>
@@ -1325,7 +1325,7 @@ def render_dashboard(force_view: Optional[str] = None):
                                     st.toast(f"▶ {sol_id or req_id} avanzada a '{next_state}'", icon="🚀")
                                     st.rerun()
 
-                        # Controles de Etapa y Paleta de Colores
+                        # Controles de Etapa y Paleta Post-it
                         k_pop1, k_pop2 = st.columns([1.1, 1.1])
                         with k_pop1:
                             with st.popover("⚙️ Etapa", use_container_width=True):
@@ -1339,15 +1339,13 @@ def render_dashboard(force_view: Optional[str] = None):
                                             st.rerun()
 
                         with k_pop2:
-                            with st.popover("🎨 Color", use_container_width=True):
-                                st.caption("Color de tarjeta:")
-                                col_g1, col_g2, col_g3 = st.columns(3)
-                                for idx_c, c_item in enumerate(PALETA_COLORES_ODOO):
-                                    with [col_g1, col_g2, col_g3][idx_c % 3]:
-                                        if st.button(c_item["nombre"].split()[0], key=f"btn_card_col_{req_id}_{c_item['id']}", help=c_item["nombre"], use_container_width=True):
-                                            update_requisicion_detalles(req_id, nuevo_color=c_item["id"])
-                                            st.toast(f"🎨 Color '{c_item['nombre']}' asignado", icon="✅")
-                                            st.rerun()
+                            with st.popover("🎨 Post-it", use_container_width=True):
+                                st.caption("Cambiar color Post-it:")
+                                for c_item in PALETA_COLORES_ODOO:
+                                    if st.button(c_item["nombre"], key=f"btn_card_col_{req_id}_{c_item['id']}", use_container_width=True):
+                                        update_requisicion_detalles(req_id, nuevo_color=c_item["id"])
+                                        st.toast(f"🎨 Post-it '{c_item['nombre']}' aplicado", icon="📝")
+                                        st.rerun()
 
     # =========================================================================
     # EXPEDIENTE DIGITAL PERMANENTE Y DESCARGA EN 1 CLIC

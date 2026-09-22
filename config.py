@@ -184,17 +184,17 @@ DIRECTORES_DEFAULT = [
 MONEDAS_DEFAULT = ["MXN", "USD", "EUR"]
 PRIORIDADES_DEFAULT = ["Baja", "Media", "Alta", "Urgente"]
 
-# Paleta de Colores Oficial para Tarjetas Kanban (Estilo Odoo CRM)
+# Paleta de Colores Post-it Oficial para Tarjetas Kanban
 PALETA_COLORES_ODOO = [
-    {"id": "blanco", "nombre": "⚪ Neutro", "color": "#94A3B8", "bg": "#FFFFFF", "border": "#CBD5E1"},
-    {"id": "rojo", "nombre": "🔴 Rojo Alerta", "color": "#EF4444", "bg": "#FEF2F2", "border": "#FCA5A5"},
-    {"id": "naranja", "nombre": "🟠 Naranja", "color": "#F97316", "bg": "#FFF7ED", "border": "#FDBA74"},
-    {"id": "amarillo", "nombre": "🟡 Amarillo", "color": "#EAB308", "bg": "#FEFCE8", "border": "#FDE047"},
-    {"id": "verde", "nombre": "🟢 Verde", "color": "#10B981", "bg": "#F0FDF4", "border": "#86EFAC"},
-    {"id": "azul", "nombre": "🔵 Azul", "color": "#3B82F6", "bg": "#EFF6FF", "border": "#93C5FD"},
-    {"id": "morado", "nombre": "🟣 Morado", "color": "#8B5CF6", "bg": "#F5F3FF", "border": "#C4B5FD"},
-    {"id": "rosa", "nombre": "🌸 Rosa", "color": "#EC4899", "bg": "#FDF2F8", "border": "#F9A8D4"},
-    {"id": "turquesa", "nombre": "🩵 Turquesa", "color": "#06B6D4", "bg": "#ECFEFF", "border": "#67E8F9"},
+    {"id": "blanco", "nombre": "⚪ Blanco", "color": "#64748B", "bg": "#FFFFFF", "border": "#E2E8F0", "top": "#CBD5E1"},
+    {"id": "amarillo", "nombre": "🟡 Amarillo Post-it", "color": "#CA8A04", "bg": "#FEF08A", "border": "#FDE047", "top": "#EAB308"},
+    {"id": "verde", "nombre": "🟢 Verde Post-it", "color": "#16A34A", "bg": "#BBF7D0", "border": "#86EFAC", "top": "#22C55E"},
+    {"id": "azul", "nombre": "🔵 Azul Post-it", "color": "#0284C7", "bg": "#BAE6FD", "border": "#7DD3FC", "top": "#0284C7"},
+    {"id": "rosa", "nombre": "🌸 Rosa Post-it", "color": "#DB2777", "bg": "#FBCFE8", "border": "#F9A8D4", "top": "#DB2777"},
+    {"id": "naranja", "nombre": "🟠 Naranja Post-it", "color": "#EA580C", "bg": "#FED7AA", "border": "#FDBA74", "top": "#EA580C"},
+    {"id": "morado", "nombre": "🟣 Morado Post-it", "color": "#7C3AED", "bg": "#DDD6FE", "border": "#C4B5FD", "top": "#7C3AED"},
+    {"id": "turquesa", "nombre": "🩵 Turquesa Post-it", "color": "#0891B2", "bg": "#A5F3FC", "border": "#67E8F9", "top": "#0891B2"},
+    {"id": "rojo", "nombre": "🔴 Rojo Post-it", "color": "#DC2626", "bg": "#FECACA", "border": "#FCA5A5", "top": "#DC2626"},
 ]
 
 # Clave de acceso para sección de mantenimiento (por defecto para entorno local)
