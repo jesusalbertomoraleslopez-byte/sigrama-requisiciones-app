@@ -47,6 +47,175 @@ from email_generator import (
 )
 
 
+@st.dialog("📁 Expediente Digital Permanente", width="large")
+def modal_ver_expediente(dossier_id: str):
+    """Ventana modal interactiva de alta fidelidad para inspeccionar el expediente digital completo."""
+    req_info = get_requisicion_by_id(dossier_id)
+    if not req_info:
+        st.error(f"No se encontró información para la requisición {dossier_id}.")
+        return
+
+    sol_id = req_info.get("folio_solicitud", "")
+    estatus = req_info.get("estatus", "")
+    cfg = STATUS_CONFIG.get(estatus, {})
+    status_color = cfg.get("color", "#0F172A")
+    status_bg = cfg.get("bg_color", "#F1F5F9")
+    status_icon = cfg.get("icon", "📋")
+    
+    monto_val = float(req_info.get("monto_po", 0.0) if req_info.get("monto_po", 0.0) > 0 else req_info.get("monto_estimado", 0.0))
+
+    # Encabezado visual de la ventana
+    st.markdown(f"""
+    <div style="background-color:#FFFFFF; border:1px solid #CBD5E1; border-left:6px solid #EC2024; border-radius:8px; padding:16px; margin-bottom:16px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div>
+                <span style="font-size:12px; font-weight:800; color:#475569; background:#F1F5F9; border:1px solid #CBD5E1; padding:3px 8px; border-radius:4px; margin-right:8px;">{sol_id or 'SOL-S/N'}</span>
+                <span style="font-size:24px; font-weight:900; color:#EC2024; font-family:'Montserrat', sans-serif;">{dossier_id}</span>
+            </div>
+            <span style="background-color:{status_bg}; color:{status_color}; border:1px solid {status_color}44; padding:5px 14px; border-radius:6px; font-weight:800; font-size:13px;">
+                {status_icon} {estatus}
+            </span>
+        </div>
+        <div style="margin-top:14px; display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; font-size:13px; color:#334155;">
+            <div><strong>👤 Solicitante:</strong><br>{req_info.get('solicitante', 'N/A')}</div>
+            <div><strong>🎯 Área de Impacto:</strong><br>{req_info.get('area_impacto', 'N/A')}</div>
+            <div><strong>📅 Fecha Solicitud:</strong><br>{req_info.get('fecha_requisicion', 'N/A')}</div>
+            <div><strong>💰 Monto Estimado / PO:</strong><br><span style="font-size:15px; font-weight:800; color:#0F172A;">${monto_val:,.2f} MXN</span></div>
+        </div>
+        <div style="margin-top:12px; padding-top:10px; border-top:1px solid #E2E8F0; font-size:13.5px; color:#0F172A;">
+            <strong>📝 Descripción del Requerimiento:</strong>
+            <div style="background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:10px 12px; margin-top:5px; font-size:13px; line-height:1.45;">
+                {req_info.get('descripcion_breve', 'Sin descripción')}
+            </div>
+        </div>
+        {f'''<div style="margin-top:10px; padding:8px 12px; background-color:#ECFDF5; border:1px solid #A7F3D0; border-radius:6px; font-size:12.5px; color:#065F46;">
+            <strong>📝 Orden de Compra (PO):</strong> {req_info.get("folio_po")} &bull; <strong>Proveedor:</strong> {req_info.get("proveedor_seleccionado", "N/A")} &bull; <strong>Monto PO:</strong> ${float(req_info.get("monto_po", 0.0)):,.2f} MXN
+        </div>''' if req_info.get('folio_po') else ''}
+        {f'''<div style="margin-top:8px; font-size:12px; color:#64748B; font-style:italic;">
+            <strong>Notas de Auditoría:</strong> {req_info.get("notas_auditoria")}
+        </div>''' if req_info.get('notas_auditoria') else ''}
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 1. Selector rápido para cambiar estatus desde la ventana
+    st.markdown("##### 🔄 Cambiar Estatus de la Requisición")
+    col_st_sel, col_st_btn = st.columns([2.2, 1])
+    with col_st_sel:
+        cur_idx_st = TODOS_ESTATUS.index(estatus) if estatus in TODOS_ESTATUS else 0
+        new_status_val = st.selectbox(
+            "Mover a Estatus / Etapa:",
+            options=TODOS_ESTATUS,
+            index=cur_idx_st,
+            format_func=lambda s: f"{STATUS_CONFIG.get(s, {}).get('icon', '')} {s}",
+            key=f"modal_sel_estatus_{dossier_id}"
+        )
+    with col_st_btn:
+        st.write("")
+        st.write("")
+        if st.button("🔄 Cambiar Etapa", key=f"btn_modal_save_st_{dossier_id}", type="primary", use_container_width=True):
+            if new_status_val != estatus:
+                update_requisicion_detalles(dossier_id, nuevo_estatus=new_status_val)
+                st.toast(f"✅ Requisición {dossier_id} movida a '{new_status_val}'", icon="🚀")
+                st.rerun()
+
+    # 2. Edición de Descripción y Área
+    with st.expander("✏️ Modificar Descripción y Área de Impacto"):
+        catalogos = load_catalogos()
+        areas_list = list(catalogos.get("areas_impacto", AREAS_IMPACTO_DEFAULT))
+        cur_m_area = req_info.get("area_impacto", "")
+        if cur_m_area and cur_m_area not in areas_list:
+            areas_list.append(cur_m_area)
+        idx_m_area = areas_list.index(cur_m_area) if cur_m_area in areas_list else 0
+
+        c_ma, c_md = st.columns([1.1, 2.3])
+        with c_ma:
+            new_m_area = st.selectbox(
+                "Área de Impacto:",
+                options=areas_list,
+                index=idx_m_area,
+                key=f"modal_area_in_{dossier_id}"
+            )
+        with c_md:
+            new_m_desc = st.text_area(
+                "Descripción:",
+                value=str(req_info.get("descripcion_breve", "") or ""),
+                height=75,
+                key=f"modal_desc_in_{dossier_id}"
+            )
+        if st.button("💾 Guardar Descripción y Área", key=f"btn_modal_save_desc_{dossier_id}", use_container_width=True):
+            if update_requisicion_detalles(dossier_id, nueva_descripcion=new_m_desc, nueva_area=new_m_area):
+                st.toast(f"✅ Datos guardados para {dossier_id}", icon="💾")
+                st.rerun()
+
+    # 3. Cotizaciones Asociadas
+    df_cots = load_cotizaciones(dossier_id)
+    if not df_cots.empty:
+        st.markdown(f"##### 📑 Cotizaciones Asociadas ({len(df_cots)})")
+        cols_cot_show = ["proveedor", "monto", "moneda", "tiempo_entrega_dias", "seleccionada", "archivo_cotizacion_pdf"]
+        cols_present = [c for c in cols_cot_show if c in df_cots.columns]
+        st.dataframe(df_cots[cols_present], use_container_width=True, hide_index=True)
+
+    # 4. Archivos Físicos y Evidencias Adjuntas
+    req_dir = get_req_directory(dossier_id)
+    attached_files = list(req_dir.iterdir()) if req_dir.exists() else []
+
+    st.markdown("##### 📎 Documentos y Evidencias Adjuntas")
+    if not attached_files:
+        st.info("ℹ️ No se han almacenado archivos físicos aún en la carpeta de este expediente.")
+    else:
+        for file_p in attached_files:
+            if file_p.is_file():
+                f_size_kb = file_p.stat().st_size / 1024
+                f_ext = file_p.suffix.lower()
+                icon_type = "📧" if f_ext == ".eml" else "📄"
+
+                d_col1, d_col2 = st.columns([3, 1])
+                with d_col1:
+                    st.write(f"{icon_type} **{file_p.name}** ({f_size_kb:.1f} KB)")
+                with d_col2:
+                    try:
+                        with open(file_p, "rb") as bf:
+                            file_bytes = bf.read()
+                        mime_type = "message/rfc822" if f_ext == ".eml" else "application/pdf"
+                        st.download_button(
+                            label="⬇️ Descargar",
+                            data=file_bytes,
+                            file_name=file_p.name,
+                            mime=mime_type,
+                            key=f"dl_modal_{dossier_id}_{file_p.name}",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+
+    # 5. Descargar Correo EML individual de autorización
+    try:
+        single_eml = build_consolidated_requisitions_eml(
+            [req_info],
+            destinatario_to=None,
+            destinatarios_cc=None,
+            solicitante_remitente=req_info.get("solicitante", ""),
+            remitente_from=None,
+            planta="Planta Metales"
+        )
+        s_sol = str(req_info.get("folio_solicitud", "") or "").strip()
+        s_tag = f"{s_sol}_{dossier_id}" if s_sol else dossier_id
+        st.download_button(
+            label=f"📩 Descargar Correo de Autorización (.eml)",
+            data=single_eml,
+            file_name=f"Autorizacion_{s_tag}.eml",
+            mime="message/rfc822",
+            key=f"dl_eml_modal_{dossier_id}",
+            use_container_width=True
+        )
+    except Exception:
+        pass
+
+    st.markdown("---")
+    if st.button("✖️ Cerrar Ventana", key=f"btn_close_modal_{dossier_id}", use_container_width=True):
+        st.rerun()
+
+
 @st.dialog("✏️ Modificar Descripción y Área de la Requisición")
 def modal_editar_descripcion(default_req_id: str = ""):
     """Modal emergente para modificar la descripción breve y el área de impacto de cualquier requisición."""
@@ -801,7 +970,8 @@ def render_dashboard(force_view: Optional[str] = None):
         # Selector para abrir Expediente Permanente
         st.markdown("---")
         st.markdown("##### 🔍 Inspeccionar Expediente Digital y Descargar Documentos")
-        c_sel, _ = st.columns([2.5, 1.5])
+        c_sel, c_btn = st.columns([2.5, 1.2])
+        selected_from_list = None
         with c_sel:
             display_labels = {}
             for _, r in df_filtered.iterrows():
@@ -811,7 +981,7 @@ def render_dashboard(force_view: Optional[str] = None):
             all_options = df_filtered["id_requisicion"].tolist()
             if all_options:
                 selected_from_list = st.selectbox(
-                    "Selecciona una Requisición para ver su expediente completo:",
+                    "Selecciona una Requisición para ver su expediente:",
                     options=all_options,
                     format_func=lambda x: display_labels.get(x, x),
                     index=0,
@@ -819,6 +989,13 @@ def render_dashboard(force_view: Optional[str] = None):
                 )
                 if selected_from_list:
                     st.session_state["selected_dossier_id"] = selected_from_list
+
+        with c_btn:
+            st.write("")
+            st.write("")
+            if st.button("📁 Abrir Ventana", key="btn_open_modal_from_list", type="primary", use_container_width=True):
+                if selected_from_list:
+                    modal_ver_expediente(selected_from_list)
 
     # =========================================================================
     # VISTA 2: TABLERO KANBAN ESTILO ODOO
@@ -933,8 +1110,8 @@ def render_dashboard(force_view: Optional[str] = None):
                                     st.rerun()
 
                         with btn_c2:
-                            if st.button(f"👁️ Ver", key=f"btn_kan_{req_id}", help=f"Ver expediente de {req_id}", use_container_width=True):
-                                st.session_state["selected_dossier_id"] = req_id
+                            if st.button("👁️", key=f"btn_kan_{req_id}", help=f"Abrir ventana de expediente de {req_id}", use_container_width=True):
+                                modal_ver_expediente(req_id)
 
                         with btn_c3:
                             if cur_idx < len(TODOS_ESTATUS) - 1:
