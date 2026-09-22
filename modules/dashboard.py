@@ -348,7 +348,7 @@ def render_dashboard():
 
         st.markdown("""
         <div style="background-color:#F0FDF4; border:1px solid #BBF7D0; border-left:4px solid #16A34A; padding:8px 14px; border-radius:6px; margin:4px 0 10px 0; font-size:12.5px; color:#14532D; display:flex; align-items:center; gap:8px;">
-            <span>✏️ <strong>Edición Directa en la Tabla:</strong> Puedes hacer doble clic en cualquier celda de <strong>Descripción</strong> para escribir directamente, o hacer clic en <strong>Área de Impacto</strong> para elegir el área deseada (Producción, Laser, Lijado, Doblez, Pintura, Embarque, Calidad, Inspección, etc.). Los cambios se guardan automáticamente en la base de datos.</span>
+            <span>✏️ <strong>Edición Directa en la Tabla:</strong> Puedes cambiar el <strong>🚦 Estatus</strong> haciendo clic en su celda, editar la <strong>Descripción</strong> con doble clic, o reasignar el <strong>Área de Impacto</strong>. Para mover tarjetas entre etapas estilo CRM, activa la vista <strong>🗂️ Kanban Odoo</strong> arriba a la derecha.</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -415,7 +415,15 @@ def render_dashboard():
             else:
                 data_to_render = display_df[cols_to_show]
 
-            # Renderizar con st.data_editor: permite editar 'Descripción' y 'Área' directamente en las celdas
+            # Opciones oficiales de estatus con semáforo/emoji
+            estatus_opciones = [
+                f"{STATUS_CONFIG[ESTATUS_ESPERA_COTIZACION]['icon']} {ESTATUS_ESPERA_COTIZACION}",
+                f"{STATUS_CONFIG[ESTATUS_PENDIENTE_AUTORIZACION]['icon']} {ESTATUS_PENDIENTE_AUTORIZACION}",
+                f"{STATUS_CONFIG[ESTATUS_PO_GENERADA]['icon']} {ESTATUS_PO_GENERADA}",
+                f"{STATUS_CONFIG[ESTATUS_ARCHIVADO]['icon']} {ESTATUS_ARCHIVADO}",
+            ]
+
+            # Renderizar con st.data_editor: permite editar 'Estatus', 'Descripción' y 'Área' directamente
             edited_table = st.data_editor(
                 data_to_render,
                 use_container_width=True,
@@ -424,7 +432,7 @@ def render_dashboard():
                 column_config={
                     "Sel.": st.column_config.CheckboxColumn("✉️", help="Marca la casilla para incluir en el paquete de correo .eml", default=False, width="small"),
                     "Interno": st.column_config.TextColumn(
-                        "Interno (SOL)",
+                        "📌 Interno (SOL)",
                         width="medium",
                         help="Consecutivo Interno Planta Metales (SOL-XXXXX)",
                         disabled=True
@@ -432,16 +440,11 @@ def render_dashboard():
                     "Folio": st.column_config.TextColumn("Folio (REQ)", width="small", help="Folio Oficial de Requisición", disabled=True),
                     "Fecha": st.column_config.TextColumn("Fecha", width="small", disabled=True),
                     "Estatus Odoo": st.column_config.SelectboxColumn(
-                        "Estatus",
+                        "🚦 Estatus",
                         width="medium",
-                        options=[
-                            f"{STATUS_CONFIG[ESTATUS_ESPERA_COTIZACION]['icon']} {ESTATUS_ESPERA_COTIZACION}",
-                            f"{STATUS_CONFIG[ESTATUS_PENDIENTE_AUTORIZACION]['icon']} {ESTATUS_PENDIENTE_AUTORIZACION}",
-                            f"{STATUS_CONFIG[ESTATUS_PO_GENERADA]['icon']} {ESTATUS_PO_GENERADA}",
-                            f"{STATUS_CONFIG[ESTATUS_ARCHIVADO]['icon']} {ESTATUS_ARCHIVADO}",
-                        ],
-                        disabled=True,
-                        help="Estado actual de la requisición en el flujo de compras"
+                        options=estatus_opciones,
+                        required=True,
+                        help="Haz clic para cambiar el estatus de la requisición"
                     ),
                     "Área": st.column_config.SelectboxColumn("Área de Impacto", width="medium", options=areas_list, required=True, help="Haz clic para seleccionar el área de la requisición"),
                     "Solicitante": st.column_config.TextColumn("Solicitante", width="medium", disabled=True),
@@ -452,7 +455,6 @@ def render_dashboard():
                 }
             )
 
-
             # Detectar y guardar cambios automáticos realizados directamente en la tabla
             edits_saved = []
             if isinstance(edited_table, pd.DataFrame) and len(edited_table) == len(display_df):
@@ -461,11 +463,26 @@ def render_dashboard():
                     new_d = str(edited_table.iloc[i]["Descripción"] or "").strip()
                     orig_a = str(display_df.iloc[i]["Área"] or "").strip()
                     new_a = str(edited_table.iloc[i]["Área"] or "").strip()
+                    orig_e = str(display_df.iloc[i]["Estatus Odoo"] or "").strip()
+                    new_e = str(edited_table.iloc[i]["Estatus Odoo"] or "").strip()
 
-                    if orig_d != new_d or orig_a != new_a:
+                    # Limpiar emoji para guardar estatus oficial
+                    clean_new_e = None
+                    if orig_e != new_e:
+                        for est_oficial in [ESTATUS_ESPERA_COTIZACION, ESTATUS_PENDIENTE_AUTORIZACION, ESTATUS_PO_GENERADA, ESTATUS_ARCHIVADO]:
+                            if est_oficial in new_e:
+                                clean_new_e = est_oficial
+                                break
+
+                    if orig_d != new_d or orig_a != new_a or clean_new_e is not None:
                         f_id = display_df.iloc[i]["Folio"]
                         s_id = display_df.iloc[i]["Interno"]
-                        update_requisicion_detalles(f_id, nueva_descripcion=new_d, nueva_area=new_a)
+                        update_requisicion_detalles(
+                            f_id,
+                            nueva_descripcion=new_d if orig_d != new_d else None,
+                            nueva_area=new_a if orig_a != new_a else None,
+                            nuevo_estatus=clean_new_e
+                        )
                         edits_saved.append(f"{s_id or f_id}")
 
             if edits_saved:
@@ -839,8 +856,29 @@ def render_dashboard():
                         </div>
                         """, unsafe_allow_html=True)
 
-                        if st.button(f"Expediente {req_id}", key=f"btn_kan_{req_id}", use_container_width=True):
-                            st.session_state["selected_dossier_id"] = req_id
+                        # Botones estilo Odoo para mover entre etapas en 1 clic
+                        k_c1, k_c2 = st.columns([1, 1.2])
+                        with k_c1:
+                            if st.button(f"Expediente", key=f"btn_kan_{req_id}", use_container_width=True):
+                                st.session_state["selected_dossier_id"] = req_id
+
+                        with k_c2:
+                            # Opciones a las que puede moverse
+                            other_states = [s for s in [ESTATUS_ESPERA_COTIZACION, ESTATUS_PENDIENTE_AUTORIZACION, ESTATUS_PO_GENERADA, ESTATUS_ARCHIVADO]]
+                            current_idx = other_states.index(state_key) if state_key in other_states else 0
+                            
+                            nuevo_estado_sel = st.selectbox(
+                                "Mover etapa:",
+                                options=other_states,
+                                index=current_idx,
+                                format_func=lambda s: f"➡️ {STATUS_CONFIG.get(s, {}).get('icon', '')} {s.split()[0]}",
+                                key=f"sel_move_{req_id}",
+                                label_visibility="collapsed"
+                            )
+                            if nuevo_estado_sel != state_key:
+                                update_requisicion_detalles(req_id, nuevo_estatus=nuevo_estado_sel)
+                                st.toast(f"🔄 {sol_id or req_id} movida a '{nuevo_estado_sel}'", icon="🚀")
+                                st.rerun()
 
     # =========================================================================
     # EXPEDIENTE DIGITAL PERMANENTE Y DESCARGA EN 1 CLIC

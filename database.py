@@ -411,9 +411,10 @@ def save_requisicion(data: Dict[str, Any]) -> bool:
 def update_requisicion_detalles(
     req_id: str,
     nueva_descripcion: Optional[str] = None,
-    nueva_area: Optional[str] = None
+    nueva_area: Optional[str] = None,
+    nuevo_estatus: Optional[str] = None
 ) -> bool:
-    """Actualiza la descripción breve y/o el área de impacto de una requisición y registra la última modificación."""
+    """Actualiza la descripción breve, área de impacto y/o estatus de una requisición y registra la última modificación."""
     init_databases()
     norm_id = normalize_req_id(req_id)
     if not norm_id:
@@ -427,6 +428,8 @@ def update_requisicion_detalles(
         df.at[idx, "descripcion_breve"] = str(nueva_descripcion or "").strip()
     if nueva_area is not None and str(nueva_area).strip():
         df.at[idx, "area_impacto"] = str(nueva_area).strip()
+    if nuevo_estatus is not None and str(nuevo_estatus).strip():
+        df.at[idx, "estatus"] = str(nuevo_estatus).strip()
     df.at[idx, "ultima_modificacion"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     _atomic_write_excel(df, EXCEL_REQUISICIONES_PATH)
     return True
