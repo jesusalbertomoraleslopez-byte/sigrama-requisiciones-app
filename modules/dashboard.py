@@ -19,6 +19,9 @@ from config import (
     COLOR_SECONDARY,
     COLOR_BORDER,
     AREAS_IMPACTO_DEFAULT,
+    SOLICITANTES_DEFAULT,
+    PRIORIDADES_DEFAULT,
+    MONEDAS_DEFAULT,
     ESTATUS_ESPERA_COTIZACION,
     ESTATUS_PENDIENTE_AUTORIZACION,
     ESTATUS_AUTORIZADA,
@@ -39,6 +42,7 @@ from database import (
     load_cotizaciones,
     get_requisicion_by_id,
     load_catalogos,
+    save_requisicion,
     update_requisicion_descripcion,
     update_requisicion_detalles
 )
@@ -47,118 +51,277 @@ from email_generator import (
 )
 
 
-@st.dialog("📁 Expediente Digital Permanente", width="large")
+@st.dialog("📋 Expediente y Ajuste de Requisición", width="large")
 def modal_ver_expediente(dossier_id: str):
-    """Ventana modal interactiva de alta fidelidad para inspeccionar el expediente digital completo."""
+    """Ventana modal interactiva de alta fidelidad para previsualizar y ajustar todos los campos de la requisición."""
     req_info = get_requisicion_by_id(dossier_id)
     if not req_info:
         st.error(f"No se encontró información para la requisición {dossier_id}.")
         return
 
-    sol_id = req_info.get("folio_solicitud", "")
-    estatus = req_info.get("estatus", "")
-    cfg = STATUS_CONFIG.get(estatus, {})
+    # Catálogos dinámicos
+    catalogos = load_catalogos()
+    areas_list = list(catalogos.get("areas_impacto", AREAS_IMPACTO_DEFAULT))
+    solicitantes_list = list(catalogos.get("solicitantes", SOLICITANTES_DEFAULT))
+    prioridades_list = list(PRIORIDADES_DEFAULT)
+    monedas_list = list(MONEDAS_DEFAULT)
+
+    sol_id = str(req_info.get("folio_solicitud", "") or "").strip()
+    estatus_actual = str(req_info.get("estatus", "") or "").strip()
+
+    # Normalizar estatus
+    matched_status = TODOS_ESTATUS[0]
+    for s in TODOS_ESTATUS:
+        if s.lower() == estatus_actual.lower():
+            matched_status = s
+            break
+        if "espera" in estatus_actual.lower() and "espera" in s.lower():
+            matched_status = ESTATUS_ESPERA_COTIZACION
+            break
+        if "pendiente" in estatus_actual.lower() and "pendiente" in s.lower():
+            matched_status = ESTATUS_PENDIENTE_AUTORIZACION
+            break
+        if "congelad" in estatus_actual.lower() and "congelad" in s.lower():
+            matched_status = ESTATUS_CONGELADA
+            break
+        if "archiv" in estatus_actual.lower() and "archiv" in s.lower():
+            matched_status = ESTATUS_ARCHIVADA
+            break
+        if "po" in estatus_actual.lower() and "po" in s.lower():
+            matched_status = ESTATUS_PO_GENERADA
+            break
+        if "terminad" in estatus_actual.lower() and "terminad" in s.lower():
+            matched_status = ESTATUS_TERMINADA
+            break
+        if "autorizad" in estatus_actual.lower() and s == ESTATUS_AUTORIZADA:
+            matched_status = ESTATUS_AUTORIZADA
+            break
+
+    cfg = STATUS_CONFIG.get(matched_status, {})
     status_color = cfg.get("color", "#0F172A")
     status_bg = cfg.get("bg_color", "#F1F5F9")
     status_icon = cfg.get("icon", "📋")
-    
-    monto_val = float(req_info.get("monto_po", 0.0) if req_info.get("monto_po", 0.0) > 0 else req_info.get("monto_estimado", 0.0))
 
-    # Encabezado visual de la ventana
+    # Banner visual de la Requisición
     st.markdown(f"""
-    <div style="background-color:#FFFFFF; border:1px solid #CBD5E1; border-left:6px solid #EC2024; border-radius:8px; padding:16px; margin-bottom:16px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
+    <div style="background-color:#FFFFFF; border:1px solid #CBD5E1; border-left:6px solid #EC2024; border-radius:8px; padding:12px 16px; margin-bottom:12px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <div>
                 <span style="font-size:12px; font-weight:800; color:#475569; background:#F1F5F9; border:1px solid #CBD5E1; padding:3px 8px; border-radius:4px; margin-right:8px;">{sol_id or 'SOL-S/N'}</span>
                 <span style="font-size:24px; font-weight:900; color:#EC2024; font-family:'Montserrat', sans-serif;">{dossier_id}</span>
             </div>
             <span style="background-color:{status_bg}; color:{status_color}; border:1px solid {status_color}44; padding:5px 14px; border-radius:6px; font-weight:800; font-size:13px;">
-                {status_icon} {estatus}
+                {status_icon} {matched_status}
             </span>
         </div>
-        <div style="margin-top:14px; display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; font-size:13px; color:#334155;">
-            <div><strong>👤 Solicitante:</strong><br>{req_info.get('solicitante', 'N/A')}</div>
-            <div><strong>🎯 Área de Impacto:</strong><br>{req_info.get('area_impacto', 'N/A')}</div>
-            <div><strong>📅 Fecha Solicitud:</strong><br>{req_info.get('fecha_requisicion', 'N/A')}</div>
-            <div><strong>💰 Monto Estimado / PO:</strong><br><span style="font-size:15px; font-weight:800; color:#0F172A;">${monto_val:,.2f} MXN</span></div>
+        <div style="font-size:11.5px; color:#64748B; margin-top:6px;">
+            💡 <i>Modifica cualquier campo a continuación y presiona <b>GUARDAR INFORMACIÓN</b> para actualizar la base de datos de inmediato.</i>
         </div>
-        <div style="margin-top:12px; padding-top:10px; border-top:1px solid #E2E8F0; font-size:13.5px; color:#0F172A;">
-            <strong>📝 Descripción del Requerimiento:</strong>
-            <div style="background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:10px 12px; margin-top:5px; font-size:13px; line-height:1.45;">
-                {req_info.get('descripcion_breve', 'Sin descripción')}
-            </div>
-        </div>
-        {f'''<div style="margin-top:10px; padding:8px 12px; background-color:#ECFDF5; border:1px solid #A7F3D0; border-radius:6px; font-size:12.5px; color:#065F46;">
-            <strong>📝 Orden de Compra (PO):</strong> {req_info.get("folio_po")} &bull; <strong>Proveedor:</strong> {req_info.get("proveedor_seleccionado", "N/A")} &bull; <strong>Monto PO:</strong> ${float(req_info.get("monto_po", 0.0)):,.2f} MXN
-        </div>''' if req_info.get('folio_po') else ''}
-        {f'''<div style="margin-top:8px; font-size:12px; color:#64748B; font-style:italic;">
-            <strong>Notas de Auditoría:</strong> {req_info.get("notas_auditoria")}
-        </div>''' if req_info.get('notas_auditoria') else ''}
     </div>
     """, unsafe_allow_html=True)
 
-    # 1. Selector rápido para cambiar estatus desde la ventana
-    st.markdown("##### 🔄 Cambiar Estatus de la Requisición")
-    col_st_sel, col_st_btn = st.columns([2.2, 1])
-    with col_st_sel:
-        cur_idx_st = TODOS_ESTATUS.index(estatus) if estatus in TODOS_ESTATUS else 0
-        new_status_val = st.selectbox(
-            "Mover a Estatus / Etapa:",
-            options=TODOS_ESTATUS,
-            index=cur_idx_st,
-            format_func=lambda s: f"{STATUS_CONFIG.get(s, {}).get('icon', '')} {s}",
-            key=f"modal_sel_estatus_{dossier_id}"
-        )
-    with col_st_btn:
-        st.write("")
-        st.write("")
-        if st.button("🔄 Cambiar Etapa", key=f"btn_modal_save_st_{dossier_id}", type="primary", use_container_width=True):
-            if new_status_val != estatus:
-                update_requisicion_detalles(dossier_id, nuevo_estatus=new_status_val)
-                st.toast(f"✅ Requisición {dossier_id} movida a '{new_status_val}'", icon="🚀")
-                st.rerun()
+    # =========================================================================
+    # FORMULARIO EDITABLE DE TODOS LOS CAMPOS
+    # =========================================================================
+    with st.form(key=f"form_expediente_{dossier_id}"):
+        st.markdown("##### 📌 Identificación y Estatus Operativo")
+        c_f1, c_f2, c_f3, c_f4 = st.columns([1.1, 1.3, 1.8, 1.1])
+        
+        with c_f1:
+            inp_sol_id = st.text_input(
+                "No. Interno (SOL):",
+                value=sol_id,
+                help="Número consecutivo interno SOL-XXXXX"
+            )
+        with c_f2:
+            inp_req_id = st.text_input(
+                "No. Requisición SAI:",
+                value=dossier_id,
+                help="Folio oficial del sistema SAI (ej. REQ-22008)"
+            )
+        with c_f3:
+            st_idx = TODOS_ESTATUS.index(matched_status) if matched_status in TODOS_ESTATUS else 0
+            inp_estatus = st.selectbox(
+                "Estatus / Etapa Actual:",
+                options=TODOS_ESTATUS,
+                index=st_idx,
+                format_func=lambda s: f"{STATUS_CONFIG.get(s, {}).get('icon', '')} {s}"
+            )
+        with c_f4:
+            cur_prio = req_info.get("prioridad", "Media")
+            if cur_prio not in prioridades_list:
+                prioridades_list.append(cur_prio)
+            prio_idx = prioridades_list.index(cur_prio) if cur_prio in prioridades_list else 1
+            inp_prioridad = st.selectbox(
+                "Prioridad:",
+                options=prioridades_list,
+                index=prio_idx
+            )
 
-    # 2. Edición de Descripción y Área
-    with st.expander("✏️ Modificar Descripción y Área de Impacto"):
-        catalogos = load_catalogos()
-        areas_list = list(catalogos.get("areas_impacto", AREAS_IMPACTO_DEFAULT))
-        cur_m_area = req_info.get("area_impacto", "")
-        if cur_m_area and cur_m_area not in areas_list:
-            areas_list.append(cur_m_area)
-        idx_m_area = areas_list.index(cur_m_area) if cur_m_area in areas_list else 0
-
-        c_ma, c_md = st.columns([1.1, 2.3])
-        with c_ma:
-            new_m_area = st.selectbox(
+        st.markdown("##### 👤 Solicitante, Área y Fechas")
+        c_f5, c_f6, c_f7 = st.columns([1.8, 1.4, 1.1])
+        with c_f5:
+            cur_solicitante = str(req_info.get("solicitante", "") or "").strip()
+            if cur_solicitante and cur_solicitante not in solicitantes_list:
+                solicitantes_list.insert(0, cur_solicitante)
+            sol_idx = solicitantes_list.index(cur_solicitante) if cur_solicitante in solicitantes_list else 0
+            inp_solicitante = st.selectbox(
+                "Solicitante:",
+                options=solicitantes_list,
+                index=sol_idx
+            )
+        with c_f6:
+            cur_area = str(req_info.get("area_impacto", "") or "").strip()
+            if cur_area and cur_area not in areas_list:
+                areas_list.insert(0, cur_area)
+            area_idx = areas_list.index(cur_area) if cur_area in areas_list else 0
+            inp_area = st.selectbox(
                 "Área de Impacto:",
                 options=areas_list,
-                index=idx_m_area,
-                key=f"modal_area_in_{dossier_id}"
+                index=area_idx
             )
-        with c_md:
-            new_m_desc = st.text_area(
-                "Descripción:",
-                value=str(req_info.get("descripcion_breve", "") or ""),
-                height=75,
-                key=f"modal_desc_in_{dossier_id}"
+        with c_f7:
+            inp_fecha = st.text_input(
+                "Fecha Solicitud:",
+                value=str(req_info.get("fecha_requisicion", "") or ""),
+                help="Formato AAAA-MM-DD"
             )
-        if st.button("💾 Guardar Descripción y Área", key=f"btn_modal_save_desc_{dossier_id}", use_container_width=True):
-            if update_requisicion_detalles(dossier_id, nueva_descripcion=new_m_desc, nueva_area=new_m_area):
-                st.toast(f"✅ Datos guardados para {dossier_id}", icon="💾")
-                st.rerun()
 
-    # 3. Cotizaciones Asociadas
+        st.markdown("##### 💰 Importes y Moneda")
+        c_f8, c_f9, c_f10 = st.columns([1.2, 1, 1.2])
+        with c_f8:
+            m_est_val = float(req_info.get("monto_estimado", 0.0) or 0.0)
+            inp_monto_est = st.number_input(
+                "Monto Estimado ($):",
+                value=m_est_val,
+                min_value=0.0,
+                step=100.0,
+                format="%.2f"
+            )
+        with c_f9:
+            cur_mon = str(req_info.get("moneda", "MXN") or "MXN").strip()
+            if cur_mon not in monedas_list:
+                monedas_list.append(cur_mon)
+            mon_idx = monedas_list.index(cur_mon) if cur_mon in monedas_list else 0
+            inp_moneda = st.selectbox(
+                "Moneda:",
+                options=monedas_list,
+                index=mon_idx
+            )
+        with c_f10:
+            m_po_val = float(req_info.get("monto_po", 0.0) or 0.0)
+            inp_monto_po = st.number_input(
+                "Monto PO ($):",
+                value=m_po_val,
+                min_value=0.0,
+                step=100.0,
+                format="%.2f"
+            )
+
+        st.markdown("##### 📝 Detalle y Justificación del Requerimiento")
+        inp_desc = st.text_area(
+            "Descripción Breve / Concepto:",
+            value=str(req_info.get("descripcion_breve", "") or ""),
+            height=85,
+            help="Texto detallado del concepto de compra o servicio requerido."
+        )
+        inp_just = st.text_area(
+            "Justificación / Motivo:",
+            value=str(req_info.get("justificacion", "") or ""),
+            height=65,
+            help="Justificación operativa para la compra."
+        )
+
+        st.markdown("##### 📦 Datos de Orden de Compra (PO) y Trazabilidad")
+        c_po1, c_po2, c_po3 = st.columns([1.2, 1.8, 1.2])
+        with c_po1:
+            inp_folio_po = st.text_input(
+                "Folio de PO:",
+                value=str(req_info.get("folio_po", "") or ""),
+                help="Ejemplo: PO-23097"
+            )
+        with c_po2:
+            cur_prov = str(req_info.get("proveedor_seleccionado", "") or req_info.get("proveedor_po", "") or "")
+            inp_proveedor = st.text_input(
+                "Proveedor Ganador / Asignado:",
+                value=cur_prov
+            )
+        with c_po3:
+            inp_fecha_po = st.text_input(
+                "Fecha de PO:",
+                value=str(req_info.get("fecha_po", "") or ""),
+                help="Fecha de emisión de la PO"
+            )
+
+        inp_notas = st.text_area(
+            "Notas de Auditoría y Seguimiento:",
+            value=str(req_info.get("notas_auditoria", "") or ""),
+            height=65
+        )
+
+        st.write("")
+        btn_submit = st.form_submit_button(
+            "💾 GUARDAR INFORMACIÓN DE LA REQUISICIÓN",
+            type="primary",
+            use_container_width=True
+        )
+
+        if btn_submit:
+            clean_req = normalize_req_id(inp_req_id)
+            clean_sol = inp_sol_id.strip().upper()
+            
+            updated_data = {
+                "id_requisicion": clean_req,
+                "folio_solicitud": clean_sol,
+                "fecha_requisicion": inp_fecha.strip(),
+                "solicitante": inp_solicitante.strip(),
+                "area_impacto": inp_area.strip(),
+                "descripcion_breve": inp_desc.strip(),
+                "justificacion": inp_just.strip(),
+                "prioridad": inp_prioridad,
+                "estatus": inp_estatus,
+                "proveedor_seleccionado": inp_proveedor.strip(),
+                "proveedor_po": inp_proveedor.strip(),
+                "monto_estimado": float(inp_monto_est),
+                "moneda": inp_moneda,
+                "num_cotizaciones": req_info.get("num_cotizaciones", 0),
+                "folio_po": inp_folio_po.strip(),
+                "fecha_po": inp_fecha_po.strip(),
+                "monto_po": float(inp_monto_po),
+                "fecha_autorizacion": req_info.get("fecha_autorizacion", ""),
+                "autorizado_por": req_info.get("autorizado_por", ""),
+                "archivo_requisicion_pdf": req_info.get("archivo_requisicion_pdf", ""),
+                "archivo_eml": req_info.get("archivo_eml", ""),
+                "archivo_po": req_info.get("archivo_po", ""),
+                "notas_auditoria": inp_notas.strip(),
+                "fecha_registro": req_info.get("fecha_registro", "")
+            }
+
+            if save_requisicion(updated_data):
+                st.toast(f"✅ Requisición {clean_req} guardada exitosamente", icon="💾")
+                st.success(f"✅ ¡Información de {clean_req} actualizada y sincronizada!")
+                st.rerun()
+            else:
+                st.error("❌ Ocurrió un error al guardar los cambios en la base de datos.")
+
+    # =========================================================================
+    # COTIZACIONES ASOCIADAS
+    # =========================================================================
     df_cots = load_cotizaciones(dossier_id)
     if not df_cots.empty:
+        st.markdown("---")
         st.markdown(f"##### 📑 Cotizaciones Asociadas ({len(df_cots)})")
         cols_cot_show = ["proveedor", "monto", "moneda", "tiempo_entrega_dias", "seleccionada", "archivo_cotizacion_pdf"]
         cols_present = [c for c in cols_cot_show if c in df_cots.columns]
         st.dataframe(df_cots[cols_present], use_container_width=True, hide_index=True)
 
-    # 4. Archivos Físicos y Evidencias Adjuntas
+    # =========================================================================
+    # ARCHIVOS FÍSICOS Y EVIDENCIAS
+    # =========================================================================
     req_dir = get_req_directory(dossier_id)
     attached_files = list(req_dir.iterdir()) if req_dir.exists() else []
 
+    st.markdown("---")
     st.markdown("##### 📎 Documentos y Evidencias Adjuntas")
     if not attached_files:
         st.info("ℹ️ No se han almacenado archivos físicos aún en la carpeta de este expediente.")
@@ -188,7 +351,7 @@ def modal_ver_expediente(dossier_id: str):
                     except Exception as e:
                         st.error(f"Error: {e}")
 
-    # 5. Descargar Correo EML individual de autorización
+    # Descarga directa de correo individual EML
     try:
         single_eml = build_consolidated_requisitions_eml(
             [req_info],
