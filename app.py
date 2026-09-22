@@ -238,7 +238,7 @@ st.markdown("""
         margin-bottom: 8px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
-        cursor: grab;
+        cursor: default;
         position: relative;
     }
     .kanban-card:hover {

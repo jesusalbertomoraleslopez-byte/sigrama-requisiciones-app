@@ -825,6 +825,11 @@ def render_dashboard(force_view: Optional[str] = None):
     # =========================================================================
     else:
         st.markdown("##### 🗂️ Tablero Kanban por Fases Operativas (Pipeline Odoo CRM)")
+        st.markdown("""
+        <div style="background-color:#F8FAFC; border-left:4px solid #EC2024; padding:8px 14px; border-radius:4px; margin-bottom:12px; font-size:12.5px; color:#334155;">
+            💡 <b>Pipeline Interactivo:</b> Cambia de estatus en 1 clic con <b>[◀ Regresar]</b> o <b>[▶ Avanzar]</b>, abre el expediente con <b>[👁️]</b>, o reasigna directamente con <b>[⚙️ Mover]</b>.
+        </div>
+        """, unsafe_allow_html=True)
         
         cols_kanban = st.columns(7)
         column_states = [
@@ -911,30 +916,45 @@ def render_dashboard(force_view: Optional[str] = None):
                         </div>
                         """, unsafe_allow_html=True)
 
-                        # Botones estilo Odoo para mover entre etapas en 1 clic
-                        k_c1, k_c2 = st.columns([1, 1.3])
-                        with k_c1:
-                            if st.button(f"👁️", key=f"btn_kan_{req_id}", help=f"Ver expediente de {req_id}", use_container_width=True):
+                        # Botones de avance y retroceso directo de etapa en 1 clic
+                        cur_state_val = state_key if state_key in TODOS_ESTATUS else ESTATUS_ARCHIVADA
+                        cur_idx = TODOS_ESTATUS.index(cur_state_val)
+
+                        # Botones rápidos: [◀ Retroceder] [👁️ Ver] [Avanzar ▶]
+                        btn_c1, btn_c2, btn_c3 = st.columns([1, 1.1, 1])
+                        
+                        with btn_c1:
+                            if cur_idx > 0:
+                                prev_state = TODOS_ESTATUS[cur_idx - 1]
+                                prev_icon = STATUS_CONFIG.get(prev_state, {}).get("icon", "◀")
+                                if st.button(f"◀", key=f"btn_prev_{req_id}", help=f"Regresar a '{prev_state}'", use_container_width=True):
+                                    update_requisicion_detalles(req_id, nuevo_estatus=prev_state)
+                                    st.toast(f"◀ {sol_id or req_id} movida a '{prev_state}'", icon="📋")
+                                    st.rerun()
+
+                        with btn_c2:
+                            if st.button(f"👁️ Ver", key=f"btn_kan_{req_id}", help=f"Ver expediente de {req_id}", use_container_width=True):
                                 st.session_state["selected_dossier_id"] = req_id
 
-                        with k_c2:
-                            # Opciones de los 7 estatus oficiales
-                            other_states = TODOS_ESTATUS
-                            current_val = state_key if state_key in other_states else ESTATUS_ARCHIVADA
-                            current_idx = other_states.index(current_val)
-                            
-                            nuevo_estado_sel = st.selectbox(
-                                "Mover etapa:",
-                                options=other_states,
-                                index=current_idx,
-                                format_func=lambda s: f"➡️ {STATUS_CONFIG.get(s, {}).get('icon', '')} {s.split()[0]}",
-                                key=f"sel_move_{req_id}",
-                                label_visibility="collapsed"
-                            )
-                            if nuevo_estado_sel != state_key:
-                                update_requisicion_detalles(req_id, nuevo_estatus=nuevo_estado_sel)
-                                st.toast(f"🔄 {sol_id or req_id} movida a '{nuevo_estado_sel}'", icon="🚀")
-                                st.rerun()
+                        with btn_c3:
+                            if cur_idx < len(TODOS_ESTATUS) - 1:
+                                next_state = TODOS_ESTATUS[cur_idx + 1]
+                                next_icon = STATUS_CONFIG.get(next_state, {}).get("icon", "▶")
+                                if st.button(f"▶", key=f"btn_next_{req_id}", help=f"Avanzar a '{next_state}'", use_container_width=True):
+                                    update_requisicion_detalles(req_id, nuevo_estatus=next_state)
+                                    st.toast(f"▶ {sol_id or req_id} avanzada a '{next_state}'", icon="🚀")
+                                    st.rerun()
+
+                        # Popover para reasignar directamente a cualquiera de las 7 fases
+                        with st.popover("⚙️ Mover...", use_container_width=True):
+                            st.caption(f"Reasignar etapa de {sol_id or req_id}:")
+                            for s_name in TODOS_ESTATUS:
+                                if s_name != cur_state_val:
+                                    s_icon = STATUS_CONFIG.get(s_name, {}).get("icon", "•")
+                                    if st.button(f"{s_icon} {s_name}", key=f"pop_mv_{req_id}_{s_name}", use_container_width=True):
+                                        update_requisicion_detalles(req_id, nuevo_estatus=s_name)
+                                        st.toast(f"🔄 {sol_id or req_id} movida a '{s_name}'", icon="🚀")
+                                        st.rerun()
 
     # =========================================================================
     # EXPEDIENTE DIGITAL PERMANENTE Y DESCARGA EN 1 CLIC
