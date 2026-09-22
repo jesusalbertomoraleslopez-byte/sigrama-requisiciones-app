@@ -496,6 +496,15 @@ def modal_editar_descripcion(default_req_id: str = ""):
 
 def render_dashboard(force_view: Optional[str] = None):
     """Renderiza el panel de control ejecutivo con Vista Lista tipo Odoo y Tablero Kanban."""
+    # Captura de clic o doble clic en tarjeta Kanban (Estilo Odoo CRM sin botones)
+    qp_req = st.query_params.get("open_req")
+    if qp_req:
+        try:
+            del st.query_params["open_req"]
+        except Exception:
+            pass
+        modal_ver_expediente(qp_req)
+
     if force_view:
         st.session_state["odoo_view_mode"] = force_view
     elif "odoo_view_mode" not in st.session_state:
@@ -1227,6 +1236,8 @@ def render_dashboard(force_view: Optional[str] = None):
             )
             df_kanban = df_kanban[mask_k]
 
+        total_pipeline_monto = max(df_kanban["monto_estimado"].sum(), 1.0)
+
         for state_key, state_title, col in column_states:
             cfg = STATUS_CONFIG.get(state_key, {})
             header_color = cfg.get("color", "#0F172A")
@@ -1237,33 +1248,82 @@ def render_dashboard(force_view: Optional[str] = None):
                 items_in_state = df_kanban[df_kanban["estatus"].isin([ESTATUS_ARCHIVADA, "Archivado Histórico"])]
             else:
                 items_in_state = df_kanban[df_kanban["estatus"] == state_key]
+
+            # Calcular monto total de la columna
+            col_total_monto = 0.0
+            if not items_in_state.empty:
+                for _, r in items_in_state.iterrows():
+                    m_po = float(r.get("monto_po", 0.0) or 0.0)
+                    m_est = float(r.get("monto_estimado", 0.0) or 0.0)
+                    if state_key in [ESTATUS_PO_GENERADA, ESTATUS_TERMINADA, ESTATUS_ARCHIVADA] and m_po > 0:
+                        col_total_monto += m_po
+                    else:
+                        col_total_monto += m_est
+
+            bar_pct = min(max(int((col_total_monto / total_pipeline_monto) * 100), 10) if col_total_monto > 0 else 0, 100)
             
             with col:
+                # Encabezado estilo Odoo CRM con Título, Contador, Barra de Progreso y Monto Total
                 st.markdown(f"""
-                <div style="background-color:{bg_color}; border:1px solid {cfg.get('border_color', '#CBD5E1')}; border-top:4px solid {header_color}; border-radius:6px; padding:8px 4px; margin-bottom:12px; text-align:center;">
-                    <div style="font-weight:800; font-size:11.5px; color:{header_color}; text-transform:uppercase;">
-                        {state_title} ({len(items_in_state)})
+                <div style="background-color:#FFFFFF; border:1px solid #E2E8F0; border-top:4px solid {header_color}; border-radius:6px; padding:8px 10px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:800; font-size:11.5px; color:#0F172A; text-transform:uppercase; letter-spacing:0.3px;">
+                            {state_title}
+                        </span>
+                        <span style="background-color:#F1F5F9; color:#475569; font-size:11px; font-weight:800; padding:1px 6px; border-radius:10px; border:1px solid #E2E8F0;">
+                            {len(items_in_state)}
+                        </span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                        <div style="flex:1; height:4px; background-color:#E2E8F0; border-radius:2px; margin-right:8px; overflow:hidden;">
+                            <div style="width:{bar_pct}%; height:100%; background-color:{header_color}; border-radius:2px;"></div>
+                        </div>
+                        <span style="font-size:11.5px; font-weight:800; color:#0F172A; white-space:nowrap;">
+                            ${col_total_monto:,.0f}
+                        </span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
 
                 if items_in_state.empty:
                     st.markdown("""
-                    <div style="text-align:center; padding:16px 4px; color:#94A3B8; font-size:11px; font-style:italic;">
-                        Sin reqs
+                    <div style="text-align:center; padding:18px 4px; color:#94A3B8; font-size:11px; font-style:italic;">
+                        Sin requisiciones
                     </div>
                     """, unsafe_allow_html=True)
                 else:
                     for _, row in items_in_state.iterrows():
                         req_id = row["id_requisicion"]
-                        sol_id = row.get("folio_solicitud", "")
-                        desc = row["descripcion_breve"]
-                        sol = row["solicitante"]
-                        area = row["area_impacto"]
-                        num_cot = row["num_cotizaciones"]
-                        monto = row["monto_po"] if state_key in [ESTATUS_PO_GENERADA, ESTATUS_TERMINADA, ESTATUS_ARCHIVADA] and row["monto_po"] > 0 else row["monto_estimado"]
-                        
-                        po_badge = f"""<div style="font-size:10px; color:#047857; font-weight:bold; margin-top:3px;">PO: {row['folio_po']}</div>""" if row.get("folio_po") else ""
+                        sol_id = str(row.get("folio_solicitud", "") or "").strip()
+                        desc = str(row.get("descripcion_breve", "") or "").strip()
+                        sol = str(row.get("solicitante", "") or "").strip()
+                        area = str(row.get("area_impacto", "") or "").strip()
+                        num_cot = int(row.get("num_cotizaciones", 0) or 0)
+                        monto = float(row["monto_po"]) if state_key in [ESTATUS_PO_GENERADA, ESTATUS_TERMINADA, ESTATUS_ARCHIVADA] and float(row.get("monto_po", 0) or 0) > 0 else float(row.get("monto_estimado", 0) or 0)
+                        moneda = str(row.get("moneda", "MXN") or "MXN")
+                        prioridad = str(row.get("prioridad", "Media") or "Media").strip().capitalize()
+
+                        if prioridad in ["Urgente", "Alta"]:
+                            stars = "⭐⭐⭐"
+                        elif prioridad == "Media":
+                            stars = "⭐⭐☆"
+                        else:
+                            stars = "⭐☆☆"
+
+                        # Iniciales y color para el avatar circular Odoo
+                        sol_clean = re.sub(r'\(.*?\)', '', sol).strip()
+                        name_parts = [p for p in sol_clean.split() if p and p.lower() not in ['ing.', 'lic.', 'arq.', 'dr.', 'de', 'del', 'la', 'las', 'los']]
+                        if len(name_parts) >= 2:
+                            initials = (name_parts[0][0] + name_parts[1][0]).upper()
+                        elif len(name_parts) == 1:
+                            initials = name_parts[0][:2].upper()
+                        else:
+                            initials = "SG"
+
+                        avatar_colors = ["#6366F1", "#8B5CF6", "#0D9488", "#D97706", "#DB2777", "#2563EB", "#059669"]
+                        avatar_bg = avatar_colors[abs(hash(sol_clean)) % len(avatar_colors)]
+
+                        # Color asignado al Post-it / tarjeta Odoo
                         color_val = str(row.get("color_etiqueta", "amarillo") or "amarillo").strip().lower()
                         if color_val in ["", "nan", "none"]:
                             color_val = "amarillo"
@@ -1272,33 +1332,43 @@ def render_dashboard(force_view: Optional[str] = None):
                         card_bg = palette_match["bg"]
                         card_border = palette_match["border"]
                         card_top = palette_match.get("top", palette_match["color"])
+                        color_class = f"kanban-color-{palette_match['id']}"
 
-                        sol_badge = f"""<span style="font-size:9.5px; font-weight:800; color:#0F172A; background-color:rgba(255,255,255,0.75); border:1px solid rgba(0,0,0,0.12); padding:1px 4px; border-radius:3px; margin-right:4px;">{sol_id}</span>""" if sol_id else ""
-                        sol_name_preview = sol.split('(')[0][:16]
+                        sol_short = sol_clean[:18]
+                        desc_preview = desc[:48] + ("..." if len(desc) > 48 else "")
+                        
+                        sol_badge_html = f"""<span class="odoo-pill" style="background:#FFFFFF; color:#1E293B; border:1px solid #CBD5E1;">{sol_id}</span>""" if sol_id else ""
+                        area_badge_html = f"""<span class="odoo-pill" style="background:rgba(255,255,255,0.7); color:#475569; border:1px solid rgba(0,0,0,0.1);">{area}</span>""" if area else ""
+                        po_badge_html = f"""<span class="odoo-pill" style="background:#DCFCE7; color:#166534; border:1px solid #86EFAC;">PO: {row['folio_po']}</span>""" if row.get("folio_po") else ""
 
+                        # Tarjeta Interactiva Odoo CRM: Clic o doble clic abre el expediente de inmediato (SIN BOTÓN)
                         st.markdown(f"""
-                        <div class="kanban-card" style="background-color:{card_bg} !important; border:1px solid {card_border} !important; border-top:7px solid {card_top} !important; box-shadow:0 4px 6px -1px rgba(0,0,0,0.09), 0 2px 4px -1px rgba(0,0,0,0.05) !important;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div>{sol_badge}<span style="font-weight:900; font-size:12px; color:#EC2024;">{req_id}</span></div>
-                                <span style="background-color:rgba(255,255,255,0.75); color:#1E293B; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; border:1px solid rgba(0,0,0,0.08);">{sol_name_preview}</span>
+                        <a href="?open_req={req_id}" target="_self" class="odoo-kanban-card {color_class}" title="Doble clic o clic para abrir expediente de {req_id}" onclick="window.location.href='?open_req={req_id}';" ondblclick="window.location.href='?open_req={req_id}';" style="background-color:{card_bg} !important; border:1px solid {card_border} !important; border-left:6px solid {card_top} !important;">
+                            <div style="font-weight:800; font-size:12px; color:#0F172A; line-height:1.3; margin-bottom:2px;">
+                                <span style="color:#EC2024; margin-right:3px;">{req_id}</span> {desc_preview}
                             </div>
-                            <div style="font-size:11.5px; color:#0F172A; margin-top:6px; font-weight:700; line-height:1.25;">
-                                {desc[:48]}{'...' if len(desc) > 48 else ''}
+                            <div style="font-size:12px; font-weight:800; color:#047857; margin-bottom:3px;">
+                                ${float(monto):,.2f} {moneda}
                             </div>
-                            <div style="font-size:10px; color:#334155; margin-top:4px; font-weight:600;">
-                                📍 {area}
+                            <div style="font-size:10.5px; color:#475569; margin-bottom:6px; font-weight:600;">
+                                👤 {sol_short}
                             </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:4px; border-top:1px dashed rgba(0,0,0,0.18); font-size:10.5px;">
-                                <span style="font-weight:900; color:#0F172A;">${float(monto):,.0f}</span>
-                                <span style="color:#334155; font-weight:700;">📑 {num_cot}</span>
+                            <div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px;">
+                                {sol_badge_html}
+                                {area_badge_html}
+                                {po_badge_html}
                             </div>
-                            {po_badge}
-                        </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(0,0,0,0.14); padding-top:4px; margin-top:2px;">
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span style="font-size:10.5px;" title="Prioridad: {prioridad}">{stars}</span>
+                                    <span style="font-size:10px; color:#475569; font-weight:700;" title="{num_cot} cotizaciones">📑 {num_cot}</span>
+                                </div>
+                                <div class="odoo-avatar" style="background-color:{avatar_bg};" title="{sol}">
+                                    {initials}
+                                </div>
+                            </div>
+                        </a>
                         """, unsafe_allow_html=True)
-
-                        # Único botón limpio para abrir el expediente (el cambio de color y etapa se realiza en la ventana de detalle)
-                        if st.button("👁️ Abrir Expediente", key=f"btn_kan_{req_id}", help=f"Abrir expediente preliminar y ajustar información de {req_id}", use_container_width=True):
-                            modal_ver_expediente(req_id)
 
     # =========================================================================
     # EXPEDIENTE DIGITAL PERMANENTE Y DESCARGA EN 1 CLIC

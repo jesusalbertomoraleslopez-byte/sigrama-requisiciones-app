@@ -229,20 +229,63 @@ st.markdown("""
         font-family: 'Montserrat', sans-serif !important;
     }
 
-    /* Estilo de Tarjetas Post-it para Tablero Kanban */
-    .kanban-card {
-        border-radius: 6px;
-        padding: 12px 12px 10px 12px;
-        margin-bottom: 6px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
-        cursor: default;
-        position: relative;
+    /* Estilo Oficial Odoo CRM Kanban Cards */
+    a.odoo-kanban-card, .odoo-kanban-card {
+        display: block !important;
+        text-decoration: none !important;
+        border-radius: 6px !important;
+        padding: 10px 12px 8px 12px !important;
+        margin-bottom: 10px !important;
+        cursor: pointer !important;
+        transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+        position: relative !important;
+        user-select: none !important;
     }
-    .kanban-card:hover {
-        transform: scale(1.03) translateY(-2px) !important;
-        box-shadow: 0 10px 18px rgba(15, 23, 42, 0.16) !important;
-        z-index: 10;
-        filter: brightness(0.97);
+    a.odoo-kanban-card:hover, .odoo-kanban-card:hover {
+        transform: translateY(-2px) scale(1.01) !important;
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.14) !important;
+        text-decoration: none !important;
+    }
+    a.odoo-kanban-card:active, .odoo-kanban-card:active {
+        transform: scale(0.99) !important;
+    }
+
+    /* Clases de Color Odoo / Post-it con respaldo !important */
+    .kanban-color-amarillo { background-color: #FEF9C3 !important; border: 1px solid #FDE047 !important; border-left: 6px solid #CA8A04 !important; }
+    .kanban-color-verde    { background-color: #DCFCE7 !important; border: 1px solid #86EFAC !important; border-left: 6px solid #16A34A !important; }
+    .kanban-color-azul     { background-color: #E0F2FE !important; border: 1px solid #7DD3FC !important; border-left: 6px solid #0284C7 !important; }
+    .kanban-color-rosa     { background-color: #FCE7F3 !important; border: 1px solid #F9A8D4 !important; border-left: 6px solid #DB2777 !important; }
+    .kanban-color-naranja  { background-color: #FFEDD5 !important; border: 1px solid #FDBA74 !important; border-left: 6px solid #EA580C !important; }
+    .kanban-color-morado   { background-color: #EDE9FE !important; border: 1px solid #C4B5FD !important; border-left: 6px solid #7C3AED !important; }
+    .kanban-color-turquesa { background-color: #CFFAFE !important; border: 1px solid #67E8F9 !important; border-left: 6px solid #0891B2 !important; }
+    .kanban-color-rojo     { background-color: #FEE2E2 !important; border: 1px solid #FCA5A5 !important; border-left: 6px solid #DC2626 !important; }
+    .kanban-color-blanco   { background-color: #FFFFFF !important; border: 1px solid #E2E8F0 !important; border-left: 6px solid #94A3B8 !important; }
+
+    /* Tags Odoo (Pills redondeadas) */
+    .odoo-pill {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 12px;
+        margin-right: 4px;
+        margin-bottom: 4px;
+        line-height: 1.2;
+    }
+
+    /* Avatar circular estilo Odoo */
+    .odoo-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        color: #FFFFFF;
+        font-size: 9.5px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        flex-shrink: 0;
     }
 
     /* File uploader limpio sin duplicaciones */
