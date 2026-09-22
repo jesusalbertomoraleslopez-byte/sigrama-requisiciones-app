@@ -21,9 +21,13 @@ from config import (
     AREAS_IMPACTO_DEFAULT,
     ESTATUS_ESPERA_COTIZACION,
     ESTATUS_PENDIENTE_AUTORIZACION,
+    ESTATUS_AUTORIZADA,
     ESTATUS_PO_GENERADA,
-    ESTATUS_ARCHIVADO,
+    ESTATUS_TERMINADA,
+    ESTATUS_ARCHIVADA,
+    ESTATUS_CONGELADA,
     STATUS_CONFIG,
+    TODOS_ESTATUS,
     REQUISICIONES_DIR,
     normalize_req_id,
     get_folder_name_for_req,
@@ -181,34 +185,46 @@ def render_dashboard():
                 key="odoo_view_mode"
             )
 
-    # Filtros Rápidos por Estado (Odoo Filter Chips)
-    c_all, c_esp, c_pen, c_po, c_arc = st.columns(5)
+    # Filtros Rápidos por Estado (Odoo Filter Chips con los 7 estatus)
+    f_cols = st.columns(8)
     counts = {
         "all": len(df_reqs),
         "esp": len(df_reqs[df_reqs["estatus"] == ESTATUS_ESPERA_COTIZACION]),
         "pen": len(df_reqs[df_reqs["estatus"] == ESTATUS_PENDIENTE_AUTORIZACION]),
+        "aut": len(df_reqs[df_reqs["estatus"] == ESTATUS_AUTORIZADA]),
         "po": len(df_reqs[df_reqs["estatus"] == ESTATUS_PO_GENERADA]),
-        "arc": len(df_reqs[df_reqs["estatus"] == ESTATUS_ARCHIVADO])
+        "ter": len(df_reqs[df_reqs["estatus"] == ESTATUS_TERMINADA]),
+        "arc": len(df_reqs[df_reqs["estatus"].isin([ESTATUS_ARCHIVADA, "Archivado Histórico"])]),
+        "con": len(df_reqs[df_reqs["estatus"] == ESTATUS_CONGELADA]),
     }
 
     if "odoo_status_filter" not in st.session_state:
         st.session_state["odoo_status_filter"] = "Todos"
 
-    with c_all:
+    with f_cols[0]:
         if st.button(f"🌐 Todos ({counts['all']})", use_container_width=True):
             st.session_state["odoo_status_filter"] = "Todos"
-    with c_esp:
-        if st.button(f"⏳ En Espera ({counts['esp']})", use_container_width=True):
+    with f_cols[1]:
+        if st.button(f"⏳ Cotización ({counts['esp']})", use_container_width=True):
             st.session_state["odoo_status_filter"] = ESTATUS_ESPERA_COTIZACION
-    with c_pen:
-        if st.button(f"📋 Pendientes ({counts['pen']})", use_container_width=True):
+    with f_cols[2]:
+        if st.button(f"📋 Pendiente ({counts['pen']})", use_container_width=True):
             st.session_state["odoo_status_filter"] = ESTATUS_PENDIENTE_AUTORIZACION
-    with c_po:
-        if st.button(f"✅ Con PO ({counts['po']})", use_container_width=True):
+    with f_cols[3]:
+        if st.button(f"👍 Autorizada ({counts['aut']})", use_container_width=True):
+            st.session_state["odoo_status_filter"] = ESTATUS_AUTORIZADA
+    with f_cols[4]:
+        if st.button(f"📝 Con PO ({counts['po']})", use_container_width=True):
             st.session_state["odoo_status_filter"] = ESTATUS_PO_GENERADA
-    with c_arc:
-        if st.button(f"📁 Histórico ({counts['arc']})", use_container_width=True):
-            st.session_state["odoo_status_filter"] = ESTATUS_ARCHIVADO
+    with f_cols[5]:
+        if st.button(f"✅ Terminada ({counts['ter']})", use_container_width=True):
+            st.session_state["odoo_status_filter"] = ESTATUS_TERMINADA
+    with f_cols[6]:
+        if st.button(f"📁 Archivada ({counts['arc']})", use_container_width=True):
+            st.session_state["odoo_status_filter"] = ESTATUS_ARCHIVADA
+    with f_cols[7]:
+        if st.button(f"🧊 Congelada ({counts['con']})", use_container_width=True):
+            st.session_state["odoo_status_filter"] = ESTATUS_CONGELADA
 
     # Aplicar Filtros de Estado, Área y Búsqueda
     df_filtered = df_reqs.copy()
@@ -415,12 +431,15 @@ def render_dashboard():
             else:
                 data_to_render = display_df[cols_to_show]
 
-            # Opciones oficiales de estatus con semáforo/emoji
+            # Opciones oficiales de estatus con semáforo/emoji (1 a 7 ordenados)
             estatus_opciones = [
                 f"{STATUS_CONFIG[ESTATUS_ESPERA_COTIZACION]['icon']} {ESTATUS_ESPERA_COTIZACION}",
                 f"{STATUS_CONFIG[ESTATUS_PENDIENTE_AUTORIZACION]['icon']} {ESTATUS_PENDIENTE_AUTORIZACION}",
+                f"{STATUS_CONFIG[ESTATUS_AUTORIZADA]['icon']} {ESTATUS_AUTORIZADA}",
                 f"{STATUS_CONFIG[ESTATUS_PO_GENERADA]['icon']} {ESTATUS_PO_GENERADA}",
-                f"{STATUS_CONFIG[ESTATUS_ARCHIVADO]['icon']} {ESTATUS_ARCHIVADO}",
+                f"{STATUS_CONFIG[ESTATUS_TERMINADA]['icon']} {ESTATUS_TERMINADA}",
+                f"{STATUS_CONFIG[ESTATUS_ARCHIVADA]['icon']} {ESTATUS_ARCHIVADA}",
+                f"{STATUS_CONFIG[ESTATUS_CONGELADA]['icon']} {ESTATUS_CONGELADA}",
             ]
 
             # Renderizar con st.data_editor: permite editar 'Estatus', 'Descripción' y 'Área' directamente
@@ -444,7 +463,7 @@ def render_dashboard():
                         width="medium",
                         options=estatus_opciones,
                         required=True,
-                        help="Haz clic para cambiar el estatus de la requisición"
+                        help="Haz clic para cambiar el estatus de la requisición (1 al 7)"
                     ),
                     "Área": st.column_config.SelectboxColumn("Área de Impacto", width="medium", options=areas_list, required=True, help="Haz clic para seleccionar el área de la requisición"),
                     "Solicitante": st.column_config.TextColumn("Solicitante", width="medium", disabled=True),
@@ -469,7 +488,7 @@ def render_dashboard():
                     # Limpiar emoji para guardar estatus oficial
                     clean_new_e = None
                     if orig_e != new_e:
-                        for est_oficial in [ESTATUS_ESPERA_COTIZACION, ESTATUS_PENDIENTE_AUTORIZACION, ESTATUS_PO_GENERADA, ESTATUS_ARCHIVADO]:
+                        for est_oficial in TODOS_ESTATUS:
                             if est_oficial in new_e:
                                 clean_new_e = est_oficial
                                 break
@@ -502,10 +521,12 @@ def render_dashboard():
 
         # Si el usuario seleccionó "Agrupar por"
         if group_by == "Estatus":
-            for idx_grp, est_name in enumerate([ESTATUS_PENDIENTE_AUTORIZACION, ESTATUS_ESPERA_COTIZACION, ESTATUS_PO_GENERADA, ESTATUS_ARCHIVADO]):
+            for idx_grp, est_name in enumerate(TODOS_ESTATUS):
                 subset = df_filtered[df_filtered["estatus"] == est_name]
                 if not subset.empty:
-                    with st.expander(f"📁 {est_name} ({len(subset)}) — Subtotal: ${subset['monto_estimado'].sum():,.2f} MXN", expanded=(est_name == ESTATUS_PENDIENTE_AUTORIZACION or est_name == ESTATUS_ESPERA_COTIZACION)):
+                    cfg_s = STATUS_CONFIG.get(est_name, {})
+                    icon_s = cfg_s.get("icon", "📁")
+                    with st.expander(f"{icon_s} {est_name} ({len(subset)}) — Subtotal: ${subset['monto_estimado'].sum():,.2f} MXN", expanded=(est_name in [ESTATUS_ESPERA_COTIZACION, ESTATUS_PENDIENTE_AUTORIZACION, ESTATUS_AUTORIZADA])):
                         sel_grp_folios, _ = render_odoo_table_section(subset, table_key=f"tabla_odoo_estatus_{idx_grp}")
                         selected_folios.extend(sel_grp_folios)
 
@@ -791,14 +812,17 @@ def render_dashboard():
     # VISTA 2: TABLERO KANBAN ESTILO ODOO
     # =========================================================================
     else:
-        st.markdown("##### 🗂️ Tablero Kanban por Fases Operativas")
+        st.markdown("##### 🗂️ Tablero Kanban por Fases Operativas (Pipeline Odoo CRM)")
         
-        cols_kanban = st.columns(4)
+        cols_kanban = st.columns(7)
         column_states = [
-            (ESTATUS_ESPERA_COTIZACION, "⏳ En Espera de Cotización", cols_kanban[0]),
-            (ESTATUS_PENDIENTE_AUTORIZACION, "📋 Pendiente de Autorización", cols_kanban[1]),
-            (ESTATUS_PO_GENERADA, "✅ PO Generada", cols_kanban[2]),
-            (ESTATUS_ARCHIVADO, "📁 Archivado Histórico", cols_kanban[3])
+            (ESTATUS_ESPERA_COTIZACION, "1. ⏳ Cotización", cols_kanban[0]),
+            (ESTATUS_PENDIENTE_AUTORIZACION, "2. 📋 Pendiente", cols_kanban[1]),
+            (ESTATUS_AUTORIZADA, "3. 👍 Autorizada", cols_kanban[2]),
+            (ESTATUS_PO_GENERADA, "4. 📝 Con PO", cols_kanban[3]),
+            (ESTATUS_TERMINADA, "5. ✅ Terminada", cols_kanban[4]),
+            (ESTATUS_ARCHIVADA, "6. 📁 Archivada", cols_kanban[5]),
+            (ESTATUS_CONGELADA, "7. 🧊 Congelada", cols_kanban[6]),
         ]
 
         for state_key, state_title, col in column_states:
@@ -806,12 +830,16 @@ def render_dashboard():
             header_color = cfg.get("color", "#0F172A")
             bg_color = cfg.get("bg_color", "#F8FAFC")
             
-            items_in_state = df_filtered[df_filtered["estatus"] == state_key]
+            # Asegurar coincidencia incluso si viene con nombre antiguo 'Archivado Histórico'
+            if state_key == ESTATUS_ARCHIVADA:
+                items_in_state = df_filtered[df_filtered["estatus"].isin([ESTATUS_ARCHIVADA, "Archivado Histórico"])]
+            else:
+                items_in_state = df_filtered[df_filtered["estatus"] == state_key]
             
             with col:
                 st.markdown(f"""
-                <div style="background-color:{bg_color}; border:1px solid {cfg.get('border_color', '#CBD5E1')}; border-top:4px solid {header_color}; border-radius:6px; padding:10px; margin-bottom:12px; text-align:center;">
-                    <div style="font-weight:800; font-size:13px; color:{header_color}; text-transform:uppercase;">
+                <div style="background-color:{bg_color}; border:1px solid {cfg.get('border_color', '#CBD5E1')}; border-top:4px solid {header_color}; border-radius:6px; padding:8px 4px; margin-bottom:12px; text-align:center;">
+                    <div style="font-weight:800; font-size:11.5px; color:{header_color}; text-transform:uppercase;">
                         {state_title} ({len(items_in_state)})
                     </div>
                 </div>
@@ -819,8 +847,8 @@ def render_dashboard():
 
                 if items_in_state.empty:
                     st.markdown("""
-                    <div style="text-align:center; padding:20px; color:#94A3B8; font-size:12px; font-style:italic;">
-                        Sin requisiciones
+                    <div style="text-align:center; padding:16px 4px; color:#94A3B8; font-size:11px; font-style:italic;">
+                        Sin reqs
                     </div>
                     """, unsafe_allow_html=True)
                 else:
@@ -831,41 +859,41 @@ def render_dashboard():
                         sol = row["solicitante"]
                         area = row["area_impacto"]
                         num_cot = row["num_cotizaciones"]
-                        monto = row["monto_po"] if state_key in [ESTATUS_PO_GENERADA, ESTATUS_ARCHIVADO] and row["monto_po"] > 0 else row["monto_estimado"]
+                        monto = row["monto_po"] if state_key in [ESTATUS_PO_GENERADA, ESTATUS_TERMINADA, ESTATUS_ARCHIVADA] and row["monto_po"] > 0 else row["monto_estimado"]
                         
-                        po_badge = f"""<div style="font-size:11px; color:#047857; font-weight:bold; margin-top:4px;">PO: {row['folio_po']}</div>""" if row.get("folio_po") else ""
-                        sol_badge = f"""<span style="font-size:10.5px; font-weight:800; color:#0F172A; background-color:#F1F5F9; border:1px solid #CBD5E1; padding:2px 6px; border-radius:4px; margin-right:6px;">{sol_id}</span>""" if sol_id else ""
+                        po_badge = f"""<div style="font-size:10px; color:#047857; font-weight:bold; margin-top:3px;">PO: {row['folio_po']}</div>""" if row.get("folio_po") else ""
+                        sol_badge = f"""<span style="font-size:9.5px; font-weight:800; color:#0F172A; background-color:#F1F5F9; border:1px solid #CBD5E1; padding:1px 4px; border-radius:3px; margin-right:4px;">{sol_id}</span>""" if sol_id else ""
 
                         st.markdown(f"""
-                        <div style="background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:6px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                        <div style="background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:6px; padding:10px 8px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div>{sol_badge}<span style="font-weight:900; font-size:13px; color:#EC2024;">{req_id}</span></div>
-                                <span style="background-color:#EFF6FF; color:#1E40AF; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">{area}</span>
+                                <div>{sol_badge}<span style="font-weight:900; font-size:11.5px; color:#EC2024;">{req_id}</span></div>
                             </div>
-                            <div style="font-size:12px; color:#334155; margin-top:6px; font-weight:600; line-height:1.3;">
-                                {desc[:60]}{'...' if len(desc) > 60 else ''}
+                            <div style="font-size:11px; color:#334155; margin-top:4px; font-weight:600; line-height:1.2;">
+                                {desc[:45]}{'...' if len(desc) > 45 else ''}
                             </div>
-                            <div style="font-size:11px; color:#64748B; margin-top:6px;">
-                                👤 {sol.split('(')[0][:24]}
+                            <div style="font-size:10px; color:#64748B; margin-top:4px;">
+                                📍 {area}
                             </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:6px; border-top:1px dashed #E2E8F0; font-size:11px;">
-                                <span style="font-weight:800; color:#0F172A;">${float(monto):,.2f}</span>
-                                <span style="color:#64748B;">📑 {num_cot} cot.</span>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:4px; border-top:1px dashed #E2E8F0; font-size:10px;">
+                                <span style="font-weight:800; color:#0F172A;">${float(monto):,.0f}</span>
+                                <span style="color:#64748B;">📑 {num_cot}</span>
                             </div>
                             {po_badge}
                         </div>
                         """, unsafe_allow_html=True)
 
                         # Botones estilo Odoo para mover entre etapas en 1 clic
-                        k_c1, k_c2 = st.columns([1, 1.2])
+                        k_c1, k_c2 = st.columns([1, 1.3])
                         with k_c1:
-                            if st.button(f"Expediente", key=f"btn_kan_{req_id}", use_container_width=True):
+                            if st.button(f"👁️", key=f"btn_kan_{req_id}", help=f"Ver expediente de {req_id}", use_container_width=True):
                                 st.session_state["selected_dossier_id"] = req_id
 
                         with k_c2:
-                            # Opciones a las que puede moverse
-                            other_states = [s for s in [ESTATUS_ESPERA_COTIZACION, ESTATUS_PENDIENTE_AUTORIZACION, ESTATUS_PO_GENERADA, ESTATUS_ARCHIVADO]]
-                            current_idx = other_states.index(state_key) if state_key in other_states else 0
+                            # Opciones de los 7 estatus oficiales
+                            other_states = TODOS_ESTATUS
+                            current_val = state_key if state_key in other_states else ESTATUS_ARCHIVADA
+                            current_idx = other_states.index(current_val)
                             
                             nuevo_estado_sel = st.selectbox(
                                 "Mover etapa:",

@@ -40,17 +40,26 @@ COLOR_TEXT_MUTED = "#64748B"    # Texto secundario pizarra
 # Estatus Oficiales del Flujo de Requisiciones
 ESTATUS_ESPERA_COTIZACION = "En Espera de Cotización"
 ESTATUS_PENDIENTE_AUTORIZACION = "Pendiente de Autorización"
+ESTATUS_AUTORIZADA = "Autorizada"
 ESTATUS_PO_GENERADA = "PO Generada"
-ESTATUS_ARCHIVADO = "Archivado Histórico"
+ESTATUS_TERMINADA = "Terminada"
+ESTATUS_ARCHIVADA = "Archivada"
+ESTATUS_CONGELADA = "Congelada"
+
+# Compatibilidad con nombres anteriores
+ESTATUS_ARCHIVADO = ESTATUS_ARCHIVADA
 
 TODOS_ESTATUS = [
     ESTATUS_ESPERA_COTIZACION,
     ESTATUS_PENDIENTE_AUTORIZACION,
+    ESTATUS_AUTORIZADA,
     ESTATUS_PO_GENERADA,
-    ESTATUS_ARCHIVADO
+    ESTATUS_TERMINADA,
+    ESTATUS_ARCHIVADA,
+    ESTATUS_CONGELADA
 ]
 
-# Configuración de Colores y Badges por Estatus
+# Configuración de Colores, Badges y Semáforos por Estatus
 STATUS_CONFIG = {
     ESTATUS_ESPERA_COTIZACION: {
         "color": "#D97706",         # Ámbar oscuro
@@ -60,27 +69,50 @@ STATUS_CONFIG = {
         "badge_class": "badge-amber"
     },
     ESTATUS_PENDIENTE_AUTORIZACION: {
-        "color": "#1D4ED8",         # Azul ejecutivo
-        "bg_color": "#DBEAFE",      # Azul suave
-        "border_color": "#BFDBFE",
+        "color": "#EA580C",         # Naranja / Alerta
+        "bg_color": "#FFEDD5",      # Naranja suave
+        "border_color": "#FED7AA",
         "icon": "📋",
+        "badge_class": "badge-orange"
+    },
+    ESTATUS_AUTORIZADA: {
+        "color": "#0284C7",         # Azul cielo / Aprobado
+        "bg_color": "#E0F2FE",      # Azul muy suave
+        "border_color": "#BAE6FD",
+        "icon": "👍",
         "badge_class": "badge-blue"
     },
     ESTATUS_PO_GENERADA: {
-        "color": "#047857",         # Verde esmeralda
-        "bg_color": "#D1FAE5",      # Verde suave
-        "border_color": "#A7F3D0",
-        "icon": "✅",
+        "color": "#16A34A",         # Verde institucional
+        "bg_color": "#DCFCE7",      # Verde suave
+        "border_color": "#BBF7D0",
+        "icon": "📝",
         "badge_class": "badge-green"
     },
-    ESTATUS_ARCHIVADO: {
-        "color": "#475569",         # Pizarra neutro
+    ESTATUS_TERMINADA: {
+        "color": "#059669",         # Esmeralda éxito
+        "bg_color": "#D1FAE5",      # Esmeralda suave
+        "border_color": "#A7F3D0",
+        "icon": "✅",
+        "badge_class": "badge-emerald"
+    },
+    ESTATUS_ARCHIVADA: {
+        "color": "#64748B",         # Pizarra neutro
         "bg_color": "#F1F5F9",      # Gris suave
         "border_color": "#E2E8F0",
         "icon": "📁",
         "badge_class": "badge-gray"
+    },
+    ESTATUS_CONGELADA: {
+        "color": "#2563EB",         # Azul hielo / frío
+        "bg_color": "#EFF6FF",      # Azul frío suave
+        "border_color": "#BFDBFE",
+        "icon": "🧊",
+        "badge_class": "badge-ice"
     }
 }
+# Alias para compatibilidad
+STATUS_CONFIG["Archivado Histórico"] = STATUS_CONFIG[ESTATUS_ARCHIVADA]
 
 # Catálogos Estándar de la Industria e Industria SIGRAMA S.A. de C.V.
 AREAS_IMPACTO_DEFAULT = [
