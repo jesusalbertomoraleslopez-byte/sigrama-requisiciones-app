@@ -1264,33 +1264,24 @@ def render_dashboard(force_view: Optional[str] = None):
             
             with col:
                 # Encabezado estilo Odoo CRM con Título, Contador, Barra de Progreso y Monto Total
-                st.markdown(f"""
-                <div style="background-color:#FFFFFF; border:1px solid #E2E8F0; border-top:4px solid {header_color}; border-radius:6px; padding:8px 10px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-weight:800; font-size:11.5px; color:#0F172A; text-transform:uppercase; letter-spacing:0.3px;">
-                            {state_title}
-                        </span>
-                        <span style="background-color:#F1F5F9; color:#475569; font-size:11px; font-weight:800; padding:1px 6px; border-radius:10px; border:1px solid #E2E8F0;">
-                            {len(items_in_state)}
-                        </span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
-                        <div style="flex:1; height:4px; background-color:#E2E8F0; border-radius:2px; margin-right:8px; overflow:hidden;">
-                            <div style="width:{bar_pct}%; height:100%; background-color:{header_color}; border-radius:2px;"></div>
-                        </div>
-                        <span style="font-size:11.5px; font-weight:800; color:#0F172A; white-space:nowrap;">
-                            ${col_total_monto:,.0f}
-                        </span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                header_html = (
+                    f'<div style="background-color:#FFFFFF; border:1px solid #E2E8F0; border-top:4px solid {header_color}; border-radius:6px; padding:8px 10px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">'
+                    f'<div style="display:flex; justify-content:space-between; align-items:center;">'
+                    f'<span style="font-weight:800; font-size:11.5px; color:#0F172A; text-transform:uppercase; letter-spacing:0.3px;">{state_title}</span>'
+                    f'<span style="background-color:#F1F5F9; color:#475569; font-size:11px; font-weight:800; padding:1px 6px; border-radius:10px; border:1px solid #E2E8F0;">{len(items_in_state)}</span>'
+                    f'</div>'
+                    f'<div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">'
+                    f'<div style="flex:1; height:4px; background-color:#E2E8F0; border-radius:2px; margin-right:8px; overflow:hidden;">'
+                    f'<div style="width:{bar_pct}%; height:100%; background-color:{header_color}; border-radius:2px;"></div>'
+                    f'</div>'
+                    f'<span style="font-size:11.5px; font-weight:800; color:#0F172A; white-space:nowrap;">${col_total_monto:,.0f}</span>'
+                    f'</div>'
+                    f'</div>'
+                )
+                st.markdown(header_html, unsafe_allow_html=True)
 
                 if items_in_state.empty:
-                    st.markdown("""
-                    <div style="text-align:center; padding:18px 4px; color:#94A3B8; font-size:11px; font-style:italic;">
-                        Sin requisiciones
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown('<div style="text-align:center; padding:18px 4px; color:#94A3B8; font-size:11px; font-style:italic;">Sin requisiciones</div>', unsafe_allow_html=True)
                 else:
                     for _, row in items_in_state.iterrows():
                         req_id = row["id_requisicion"]
@@ -1337,38 +1328,32 @@ def render_dashboard(force_view: Optional[str] = None):
                         sol_short = sol_clean[:18]
                         desc_preview = desc[:48] + ("..." if len(desc) > 48 else "")
                         
-                        sol_badge_html = f"""<span class="odoo-pill" style="background:#FFFFFF; color:#1E293B; border:1px solid #CBD5E1;">{sol_id}</span>""" if sol_id else ""
-                        area_badge_html = f"""<span class="odoo-pill" style="background:rgba(255,255,255,0.7); color:#475569; border:1px solid rgba(0,0,0,0.1);">{area}</span>""" if area else ""
-                        po_badge_html = f"""<span class="odoo-pill" style="background:#DCFCE7; color:#166534; border:1px solid #86EFAC;">PO: {row['folio_po']}</span>""" if row.get("folio_po") else ""
+                        sol_badge_html = f'<span class="odoo-pill" style="background:#FFFFFF; color:#1E293B; border:1px solid #CBD5E1;">{sol_id}</span>' if sol_id else ""
+                        area_badge_html = f'<span class="odoo-pill" style="background:rgba(255,255,255,0.7); color:#475569; border:1px solid rgba(0,0,0,0.1);">{area}</span>' if area else ""
+                        po_badge_html = f'<span class="odoo-pill" style="background:#DCFCE7; color:#166534; border:1px solid #86EFAC;">PO: {row["folio_po"]}</span>' if row.get("folio_po") else ""
 
-                        # Tarjeta Interactiva Odoo CRM: Clic o doble clic abre el expediente de inmediato (SIN BOTÓN)
-                        st.markdown(f"""
-                        <a href="?open_req={req_id}" target="_self" class="odoo-kanban-card {color_class}" title="Doble clic o clic para abrir expediente de {req_id}" onclick="window.location.href='?open_req={req_id}';" ondblclick="window.location.href='?open_req={req_id}';" style="background-color:{card_bg} !important; border:1px solid {card_border} !important; border-left:6px solid {card_top} !important;">
-                            <div style="font-weight:800; font-size:12px; color:#0F172A; line-height:1.3; margin-bottom:2px;">
-                                <span style="color:#EC2024; margin-right:3px;">{req_id}</span> {desc_preview}
-                            </div>
-                            <div style="font-size:12px; font-weight:800; color:#047857; margin-bottom:3px;">
-                                ${float(monto):,.2f} {moneda}
-                            </div>
-                            <div style="font-size:10.5px; color:#475569; margin-bottom:6px; font-weight:600;">
-                                👤 {sol_short}
-                            </div>
-                            <div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px;">
-                                {sol_badge_html}
-                                {area_badge_html}
-                                {po_badge_html}
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(0,0,0,0.14); padding-top:4px; margin-top:2px;">
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span style="font-size:10.5px;" title="Prioridad: {prioridad}">{stars}</span>
-                                    <span style="font-size:10px; color:#475569; font-weight:700;" title="{num_cot} cotizaciones">📑 {num_cot}</span>
-                                </div>
-                                <div class="odoo-avatar" style="background-color:{avatar_bg};" title="{sol}">
-                                    {initials}
-                                </div>
-                            </div>
-                        </a>
-                        """, unsafe_allow_html=True)
+                        # Tarjeta Interactiva Odoo CRM: Clic o doble clic abre el expediente de inmediato (SIN BOTÓN NI CÓDIGO VISIBLE)
+                        card_html = (
+                            f'<a href="?open_req={req_id}" target="_self" class="odoo-kanban-card {color_class}" '
+                            f'title="Doble clic o clic para abrir expediente de {req_id}" '
+                            f'onclick="window.location.href=\'?open_req={req_id}\';" '
+                            f'ondblclick="window.location.href=\'?open_req={req_id}\';" '
+                            f'style="background-color:{card_bg} !important; border:1px solid {card_border} !important; border-left:6px solid {card_top} !important;">'
+                            f'<div style="font-weight:800; font-size:12px; color:#0F172A; line-height:1.3; margin-bottom:2px;">'
+                            f'<span style="color:#EC2024; margin-right:3px;">{req_id}</span> {desc_preview}</div>'
+                            f'<div style="font-size:12px; font-weight:800; color:#047857; margin-bottom:3px;">${float(monto):,.2f} {moneda}</div>'
+                            f'<div style="font-size:10.5px; color:#475569; margin-bottom:6px; font-weight:600;">👤 {sol_short}</div>'
+                            f'<div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px;">{sol_badge_html}{area_badge_html}{po_badge_html}</div>'
+                            f'<div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(0,0,0,0.14); padding-top:4px; margin-top:2px;">'
+                            f'<div style="display:flex; align-items:center; gap:6px;">'
+                            f'<span style="font-size:10.5px;" title="Prioridad: {prioridad}">{stars}</span>'
+                            f'<span style="font-size:10px; color:#475569; font-weight:700;" title="{num_cot} cotizaciones">📑 {num_cot}</span>'
+                            f'</div>'
+                            f'<div class="odoo-avatar" style="background-color:{avatar_bg};" title="{sol}">{initials}</div>'
+                            f'</div>'
+                            f'</a>'
+                        )
+                        st.markdown(card_html, unsafe_allow_html=True)
 
     # =========================================================================
     # EXPEDIENTE DIGITAL PERMANENTE Y DESCARGA EN 1 CLIC
