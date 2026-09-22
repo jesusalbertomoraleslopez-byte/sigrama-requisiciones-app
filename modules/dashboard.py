@@ -496,15 +496,6 @@ def modal_editar_descripcion(default_req_id: str = ""):
 
 def render_dashboard(force_view: Optional[str] = None):
     """Renderiza el panel de control ejecutivo con Vista Lista tipo Odoo y Tablero Kanban."""
-    # Captura de clic o doble clic en tarjeta Kanban (Estilo Odoo CRM sin botones)
-    qp_req = st.query_params.get("open_req")
-    if qp_req:
-        try:
-            del st.query_params["open_req"]
-        except Exception:
-            pass
-        modal_ver_expediente(qp_req)
-
     if force_view:
         st.session_state["odoo_view_mode"] = force_view
     elif "odoo_view_mode" not in st.session_state:
@@ -1328,32 +1319,22 @@ def render_dashboard(force_view: Optional[str] = None):
                         sol_short = sol_clean[:18]
                         desc_preview = desc[:48] + ("..." if len(desc) > 48 else "")
                         
-                        sol_badge_html = f'<span class="odoo-pill" style="background:#FFFFFF; color:#1E293B; border:1px solid #CBD5E1;">{sol_id}</span>' if sol_id else ""
-                        area_badge_html = f'<span class="odoo-pill" style="background:rgba(255,255,255,0.7); color:#475569; border:1px solid rgba(0,0,0,0.1);">{area}</span>' if area else ""
-                        po_badge_html = f'<span class="odoo-pill" style="background:#DCFCE7; color:#166534; border:1px solid #86EFAC;">PO: {row["folio_po"]}</span>' if row.get("folio_po") else ""
+                        sol_label = f"👤 {sol_short}" if sol_short else ""
+                        area_label = f"📍 {area}" if area else ""
+                        sol_id_label = f"🏷️ {sol_id}" if sol_id else ""
+                        po_label = f" • 📝 {row['folio_po']}" if row.get("folio_po") else ""
 
-                        # Tarjeta Interactiva Odoo CRM: Clic o doble clic abre el expediente de inmediato (SIN BOTÓN NI CÓDIGO VISIBLE)
-                        card_html = (
-                            f'<a href="?open_req={req_id}" target="_self" class="odoo-kanban-card {color_class}" '
-                            f'title="Doble clic o clic para abrir expediente de {req_id}" '
-                            f'onclick="window.location.href=\'?open_req={req_id}\';" '
-                            f'ondblclick="window.location.href=\'?open_req={req_id}\';" '
-                            f'style="background-color:{card_bg} !important; border:1px solid {card_border} !important; border-left:6px solid {card_top} !important;">'
-                            f'<div style="font-weight:800; font-size:12px; color:#0F172A; line-height:1.3; margin-bottom:2px;">'
-                            f'<span style="color:#EC2024; margin-right:3px;">{req_id}</span> {desc_preview}</div>'
-                            f'<div style="font-size:12px; font-weight:800; color:#047857; margin-bottom:3px;">${float(monto):,.2f} {moneda}</div>'
-                            f'<div style="font-size:10.5px; color:#475569; margin-bottom:6px; font-weight:600;">👤 {sol_short}</div>'
-                            f'<div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px;">{sol_badge_html}{area_badge_html}{po_badge_html}</div>'
-                            f'<div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(0,0,0,0.14); padding-top:4px; margin-top:2px;">'
-                            f'<div style="display:flex; align-items:center; gap:6px;">'
-                            f'<span style="font-size:10.5px;" title="Prioridad: {prioridad}">{stars}</span>'
-                            f'<span style="font-size:10px; color:#475569; font-weight:700;" title="{num_cot} cotizaciones">📑 {num_cot}</span>'
-                            f'</div>'
-                            f'<div class="odoo-avatar" style="background-color:{avatar_bg};" title="{sol}">{initials}</div>'
-                            f'</div>'
-                            f'</a>'
+                        card_text = (
+                            f"**{req_id}** • {desc_preview}\n\n"
+                            f"**${float(monto):,.2f} {moneda}**{po_label}\n\n"
+                            f"{sol_label}   |   {area_label}\n\n"
+                            f"{sol_id_label}   |   {stars}   📑 {num_cot}"
                         )
-                        st.markdown(card_html, unsafe_allow_html=True)
+
+                        st.markdown(f'<div class="postit-box postit-{palette_match["id"]}">', unsafe_allow_html=True)
+                        if st.button(card_text, key=f"btn_postit_{req_id}", use_container_width=True, help=f"Clic para abrir expediente completo de {req_id}"):
+                            modal_ver_expediente(req_id)
+                        st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================================================
     # EXPEDIENTE DIGITAL PERMANENTE Y DESCARGA EN 1 CLIC

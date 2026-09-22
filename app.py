@@ -229,37 +229,53 @@ st.markdown("""
         font-family: 'Montserrat', sans-serif !important;
     }
 
-    /* Estilo Oficial Odoo CRM Kanban Cards */
-    a.odoo-kanban-card, .odoo-kanban-card {
-        display: block !important;
-        text-decoration: none !important;
-        border-radius: 6px !important;
-        padding: 10px 12px 8px 12px !important;
+    /* Estilo de Tarjetas Post-it Unificadas (Botón Nativo sin recarga de página) */
+    div.postit-box {
         margin-bottom: 10px !important;
-        cursor: pointer !important;
-        transition: transform 0.18s ease, box-shadow 0.18s ease !important;
-        position: relative !important;
-        user-select: none !important;
+        width: 100% !important;
     }
-    a.odoo-kanban-card:hover, .odoo-kanban-card:hover {
+    div.postit-box div.stButton > button {
+        text-align: left !important;
+        white-space: pre-wrap !important;
+        word-break: break-word !important;
+        line-height: 1.35 !important;
+        border-radius: 6px !important;
+        padding: 12px 14px !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04) !important;
+        transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+        cursor: pointer !important;
+        height: auto !important;
+        min-height: 95px !important;
+        display: block !important;
+        width: 100% !important;
+        border: 1px solid #CBD5E1 !important;
+    }
+    div.postit-box div.stButton > button p {
+        text-align: left !important;
+        font-size: 11.5px !important;
+        color: #1E293B !important;
+        line-height: 1.35 !important;
+        font-family: 'Questrial', 'Montserrat', sans-serif !important;
+        margin: 0 !important;
+    }
+    div.postit-box div.stButton > button:hover {
         transform: translateY(-2px) scale(1.01) !important;
         box-shadow: 0 6px 14px rgba(15, 23, 42, 0.14) !important;
-        text-decoration: none !important;
     }
-    a.odoo-kanban-card:active, .odoo-kanban-card:active {
+    div.postit-box div.stButton > button:active {
         transform: scale(0.99) !important;
     }
 
-    /* Clases de Color Odoo / Post-it con respaldo !important */
-    .kanban-color-amarillo { background-color: #FEF9C3 !important; border: 1px solid #FDE047 !important; border-left: 6px solid #CA8A04 !important; }
-    .kanban-color-verde    { background-color: #DCFCE7 !important; border: 1px solid #86EFAC !important; border-left: 6px solid #16A34A !important; }
-    .kanban-color-azul     { background-color: #E0F2FE !important; border: 1px solid #7DD3FC !important; border-left: 6px solid #0284C7 !important; }
-    .kanban-color-rosa     { background-color: #FCE7F3 !important; border: 1px solid #F9A8D4 !important; border-left: 6px solid #DB2777 !important; }
-    .kanban-color-naranja  { background-color: #FFEDD5 !important; border: 1px solid #FDBA74 !important; border-left: 6px solid #EA580C !important; }
-    .kanban-color-morado   { background-color: #EDE9FE !important; border: 1px solid #C4B5FD !important; border-left: 6px solid #7C3AED !important; }
-    .kanban-color-turquesa { background-color: #CFFAFE !important; border: 1px solid #67E8F9 !important; border-left: 6px solid #0891B2 !important; }
-    .kanban-color-rojo     { background-color: #FEE2E2 !important; border: 1px solid #FCA5A5 !important; border-left: 6px solid #DC2626 !important; }
-    .kanban-color-blanco   { background-color: #FFFFFF !important; border: 1px solid #E2E8F0 !important; border-left: 6px solid #94A3B8 !important; }
+    /* Colores Post-it oficiales aplicados directamente a la tarjeta unificada */
+    div.postit-amarillo div.stButton > button { background-color: #FEF9C3 !important; border: 1px solid #FDE047 !important; border-left: 6px solid #CA8A04 !important; }
+    div.postit-verde    div.stButton > button { background-color: #DCFCE7 !important; border: 1px solid #86EFAC !important; border-left: 6px solid #16A34A !important; }
+    div.postit-azul     div.stButton > button { background-color: #E0F2FE !important; border: 1px solid #7DD3FC !important; border-left: 6px solid #0284C7 !important; }
+    div.postit-rosa     div.stButton > button { background-color: #FCE7F3 !important; border: 1px solid #F9A8D4 !important; border-left: 6px solid #DB2777 !important; }
+    div.postit-naranja  div.stButton > button { background-color: #FFEDD5 !important; border: 1px solid #FDBA74 !important; border-left: 6px solid #EA580C !important; }
+    div.postit-morado   div.stButton > button { background-color: #EDE9FE !important; border: 1px solid #C4B5FD !important; border-left: 6px solid #7C3AED !important; }
+    div.postit-turquesa div.stButton > button { background-color: #CFFAFE !important; border: 1px solid #67E8F9 !important; border-left: 6px solid #0891B2 !important; }
+    div.postit-rojo     div.stButton > button { background-color: #FEE2E2 !important; border: 1px solid #FCA5A5 !important; border-left: 6px solid #DC2626 !important; }
+    div.postit-blanco   div.stButton > button { background-color: #FFFFFF !important; border: 1px solid #CBD5E1 !important; border-left: 6px solid #94A3B8 !important; }
 
     /* Tags Odoo (Pills redondeadas) */
     .odoo-pill {
