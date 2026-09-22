@@ -263,18 +263,55 @@ Industria Sigrama S.A. de C.V.
 <body style="font-family:'Segoe UI', Arial, sans-serif; background-color:#F8FAFC; margin:0; padding:20px; color:#1E293B; line-height:1.6;">
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:750px; margin:0 auto; background-color:#FFFFFF; border-radius:8px; overflow:hidden; box-shadow:0 3px 12px rgba(0,0,0,0.06); border:1px solid #E2E8F0;">
 
-        <!-- BANDA SUPERIOR: NÚMERO SAI (MUY GRANDE) -->
+        <!-- BANDA SAI 2 COLUMNAS: Número izquierda + Datos clave derecha -->
         <tr>
-            <td style="background-color:#0F172A; padding:18px 30px; text-align:center;">
-                <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:2px; margin-bottom:4px;">
-                    No. de Requisición · Sistema SAI
-                </div>
-                <div style="font-size:64px; font-weight:900; color:#FFFFFF; font-family:'Montserrat', 'Segoe UI', Arial, sans-serif; letter-spacing:6px; line-height:1;">
-                    {req_num_only}
-                </div>
-                <div style="font-size:12px; font-weight:600; color:#EC2024; margin-top:6px; letter-spacing:1px;">
-                    {req_id}
-                </div>
+            <td style="padding:0; margin:0;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <!-- COL IZQUIERDA: Número SAI grande -->
+                        <td width="42%" style="background-color:#0F172A; padding:14px 20px 12px 22px; vertical-align:middle;">
+                            <div style="font-size:9px; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:2px; margin-bottom:2px;">
+                                No. Req · SAI
+                            </div>
+                            <div style="font-size:52px; font-weight:900; color:#FFFFFF; font-family:'Montserrat','Segoe UI',Arial,sans-serif; letter-spacing:4px; line-height:1;">
+                                {req_num_only}
+                            </div>
+                            <div style="font-size:11px; font-weight:700; color:#EC2024; margin-top:3px; letter-spacing:0.5px;">
+                                {req_id}
+                            </div>
+                        </td>
+                        <!-- COL DERECHA: Datos clave de la requisición -->
+                        <td width="58%" style="background-color:#F8FAFC; padding:12px 18px; vertical-align:middle; border-left:3px solid #EC2024;">
+                            <table cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td style="font-size:10px; color:#64748B; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:2px;" colspan="2">
+                                        Datos de la Requisición
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:10px; color:#94A3B8; font-weight:600; padding:2px 6px 2px 0; white-space:nowrap;">Descripción:</td>
+                                    <td style="font-size:11px; color:#0F172A; font-weight:700; padding:2px 0;">{descripcion}</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:10px; color:#94A3B8; font-weight:600; padding:2px 6px 2px 0; white-space:nowrap;">Área:</td>
+                                    <td style="font-size:11px; color:#0F172A; font-weight:700; padding:2px 0;">{area}</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:10px; color:#94A3B8; font-weight:600; padding:2px 6px 2px 0; white-space:nowrap;">Solicitante:</td>
+                                    <td style="font-size:11px; color:#334155; padding:2px 0;">{solicitante}</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:10px; color:#94A3B8; font-weight:600; padding:2px 6px 2px 0; white-space:nowrap;">Fecha:</td>
+                                    <td style="font-size:11px; color:#334155; padding:2px 0;">{fecha} &bull; <span style="font-weight:700; color:#D97706;">{prioridad}</span></td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:10px; color:#94A3B8; font-weight:600; padding:2px 6px 2px 0; white-space:nowrap;">Planta:</td>
+                                    <td style="font-size:11px; color:#334155; padding:2px 0;">{planta} &bull; <span style="color:#EC2024; font-weight:700;">{sol_id if sol_id else req_id}</span></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
             </td>
         </tr>
 
@@ -628,18 +665,51 @@ def build_consolidated_requisitions_eml(
 <body style="margin:0; padding:0; background-color:#F1F5F9; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-font-smoothing:antialiased;">
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:850px; margin:25px auto; background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:8px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
 
-        <!-- BANDA SUPERIOR: NÚMERO(S) SAI (MUY GRANDE) -->
+        <!-- BANDA SAI 2 COLUMNAS: Número(s) izquierda + Resumen derecha -->
         <tr>
-            <td style="background-color:#0F172A; padding:20px 32px; text-align:center;">
-                <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;">
-                    No. de Requisición · Sistema SAI
-                </div>
-                <div style="font-size:{sai_font_size}; font-weight:900; color:#FFFFFF; font-family:'Montserrat', 'Segoe UI', Arial, sans-serif; letter-spacing:6px; line-height:1.1;">
-                    {sai_display}
-                </div>
-                <div style="font-size:12px; font-weight:600; color:#EC2024; margin-top:8px; letter-spacing:1px;">
-                    {sai_label}
-                </div>
+            <td style="padding:0; margin:0;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <!-- COL IZQUIERDA: Número(s) SAI -->
+                        <td width="40%" style="background-color:#0F172A; padding:14px 16px 12px 22px; vertical-align:middle;">
+                            <div style="font-size:9px; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:2px; margin-bottom:4px;">
+                                No. Req · Sistema SAI
+                            </div>
+                            <div style="font-size:{sai_font_size}; font-weight:900; color:#FFFFFF; font-family:'Montserrat','Segoe UI',Arial,sans-serif; letter-spacing:3px; line-height:1.1;">
+                                {sai_display}
+                            </div>
+                            <div style="font-size:10px; font-weight:700; color:#EC2024; margin-top:4px; letter-spacing:0.5px; word-break:break-all;">
+                                {sai_label}
+                            </div>
+                        </td>
+                        <!-- COL DERECHA: Resumen del paquete -->
+                        <td width="60%" style="background-color:#F8FAFC; padding:12px 18px; vertical-align:middle; border-left:3px solid #EC2024;">
+                            <table cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td style="font-size:10px; color:#64748B; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:4px;" colspan="2">
+                                        Resumen del Paquete · {len(reqs_list)} Requisici{'ón' if len(reqs_list)==1 else 'ones'}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:10px; color:#94A3B8; font-weight:600; padding:2px 6px 2px 0; white-space:nowrap;">Folios Internos:</td>
+                                    <td style="font-size:11px; color:#EC2024; font-weight:800; padding:2px 0;">{", ".join(s for s in sol_list[:4] if s) or "-"}</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:10px; color:#94A3B8; font-weight:600; padding:2px 6px 2px 0; white-space:nowrap;">Folios SAI:</td>
+                                    <td style="font-size:11px; color:#0F172A; font-weight:700; padding:2px 0;">{", ".join(folios[:4])}</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:10px; color:#94A3B8; font-weight:600; padding:2px 6px 2px 0; white-space:nowrap;">Fecha:</td>
+                                    <td style="font-size:11px; color:#334155; padding:2px 0;">{today_str} &bull; {planta}</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:10px; color:#94A3B8; font-weight:600; padding:2px 6px 2px 0; white-space:nowrap;">Monto Total Est.:</td>
+                                    <td style="font-size:12px; color:#0F172A; font-weight:900; padding:2px 0;">${total_monto:,.2f} MXN</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
             </td>
         </tr>
 
