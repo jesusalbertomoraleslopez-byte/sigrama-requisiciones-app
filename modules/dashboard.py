@@ -39,7 +39,6 @@ from database import (
 )
 from email_generator import (
     build_consolidated_requisitions_eml,
-    get_user_email
 )
 
 
@@ -614,16 +613,25 @@ def render_dashboard():
             with col_acc_right:
                 usuario_actual_firma = st.session_state.get("usuario") or "Jesús Alberto Morales López"
 
-                cf1, cf2 = st.columns(2)
-                with cf1:
-                    eml_to = st.text_input("Para (Destinatario):", value="Ing. Lorena Hernandez <lhernandez@sigrama.com.mx>", key="eml_to_batch")
-                with cf2:
-                    eml_cc = st.text_input("Con copia (Cc):", value="Bryan Alejandro Flores Mancinas <bryan.mancinas@sigrama.com.mx>; Cruz Eduardo Carreon Rios <cruz.carreon@sigrama.com.mx>; jose.fernandez@sigrama.com.mx; Luis Alfredo Quintana Palma <luis.quintana@sigrama.com.mx>; Jesus Alberto Morales Lopez <jesus.morales@sigrama.com.mx>", key="eml_cc_batch")
+                # ── Información de envío (solo lectura / pre-configurado) ──────────
+                st.markdown("""
+                <div style="background-color:#F0FDF4; border:1px solid #86EFAC; border-radius:6px; padding:10px 14px; font-size:12px; color:#166534; margin-bottom:8px;">
+                    <strong>📧 Configuración del Correo de Autorización:</strong><br>
+                    <span>✉️ <strong>Para:</strong> Ing. Lorena Hernandez &lt;lhernandez@sigrama.com.mx&gt;</span><br>
+                    <span>🔕 <strong>De:</strong> <em>Cuenta predeterminada del equipo que abre el .eml</em> (asignada automáticamente por Outlook)</span>
+                </div>
+                """, unsafe_allow_html=True)
 
                 cf3, cf4, cf5, cf6 = st.columns([1.2, 1.0, 0.8, 1.2])
                 with cf3:
-                    eml_firma = st.text_input("Firma Solicitante:", value=usuario_actual_firma, key="eml_firma_batch", help="Nombre que aparece en la firma y pie del cuerpo del correo.")
+                    eml_firma = st.text_input(
+                        "✍️ Firma Solicitante:",
+                        value=usuario_actual_firma,
+                        key="eml_firma_batch",
+                        help="Nombre que aparece al calce del cuerpo del correo."
+                    )
                 with cf4:
+
                     eml_planta = st.selectbox(
                         "🏭 Planta:",
                         options=["Planta Metales", "Planta Juan Escutia"],
@@ -649,12 +657,13 @@ def render_dashboard():
                     )
 
                 # Generar archivo .eml consolidado en memoria
+                # To: siempre Lorena (del config). Cc: defaults del config. From: omitido (Outlook usa cuenta del equipo).
                 eml_bytes = build_consolidated_requisitions_eml(
                     selected_records,
-                    destinatario_to=eml_to,
-                    destinatarios_cc=eml_cc,
+                    destinatario_to=None,   # usa DESTINATARIO_PRINCIPAL_DEFAULT (Ing. Lorena Hernandez)
+                    destinatarios_cc=None,  # usa DESTINATARIOS_CC_DEFAULT del config
                     solicitante_remitente=eml_firma,
-                    remitente_from=None,  # Omitido para que Outlook asigne la cuenta predeterminada de la máquina
+                    remitente_from=None,    # Outlook asigna la cuenta predeterminada del equipo
                     planta=eml_planta,
                     dias_autorizacion=int(eml_dias_aut),
                     plazo_po=eml_plazo_po
