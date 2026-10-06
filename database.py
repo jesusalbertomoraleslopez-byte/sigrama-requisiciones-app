@@ -26,6 +26,14 @@ except Exception:
     def push_file_to_github(*a, **kw): return True
     def push_excel_dbs_to_github(): pass
 
+# Sync con GCS para persistencia en Google Cloud Run
+if os.environ.get("GCS_BUCKET"):
+    try:
+        import gcs_sync
+        gcs_sync.sync_from_gcs()
+    except Exception as _e_gcs:
+        print(f"Error sincronizando con GCS: {_e_gcs}")
+
 
 from config import (
     DATA_DIR,
@@ -251,6 +259,14 @@ def _atomic_write_excel(df: pd.DataFrame, file_path: Path):
         except Exception:
             pass
 
+    # --- Sincronización con Google Cloud Storage (Cloud Run) ---
+    if os.environ.get("GCS_BUCKET"):
+        try:
+            import gcs_sync
+            gcs_sync.push_file_to_gcs(file_path)
+        except Exception as _e_up:
+            print(f"Error subiendo {file_path} a GCS: {_e_up}")
+
     # --- Sincronización con GitHub para persistencia en Streamlit Cloud ---
     # Determinar la ruta relativa del archivo respecto al directorio del proyecto
     try:
@@ -259,6 +275,21 @@ def _atomic_write_excel(df: pd.DataFrame, file_path: Path):
         push_file_to_github(file_path, str(repo_relative).replace("\\", "/"))
     except Exception:
         pass
+
+
+def sync_req_files_to_gcs(req_id: str):
+    """Sube todos los archivos en la carpeta de la requisición a GCS."""
+    if os.environ.get("GCS_BUCKET"):
+        try:
+            import gcs_sync
+            folder_name = get_folder_name_for_req(req_id)
+            target_dir = REQUISICIONES_DIR / folder_name
+            if target_dir.exists():
+                for f in target_dir.iterdir():
+                    if f.is_file():
+                        gcs_sync.push_file_to_gcs(f)
+        except Exception as _e:
+            print(f"Error sincronizando archivos de requisición {req_id} con GCS: {_e}")
 
 
 # =============================================================================
@@ -401,6 +432,7 @@ def save_requisicion(data: Dict[str, Any]) -> bool:
     # Garantizar unicidad absoluta del número de requisición
     df = df.drop_duplicates(subset=["id_requisicion"], keep="last")
     _atomic_write_excel(df, EXCEL_REQUISICIONES_PATH)
+    sync_req_files_to_gcs(norm_id)
     return True
 
 
@@ -612,6 +644,12 @@ def delete_requisiciones(req_ids: List[str]) -> Tuple[int, List[str]]:
                 shutil.rmtree(target_dir)
             except Exception as e:
                 errors.append(f"No se pudo eliminar la carpeta {folder_name}: {e}")
+        if os.environ.get("GCS_BUCKET"):
+            try:
+                import gcs_sync
+                gcs_sync.delete_req_dir_from_gcs(folder_name)
+            except Exception:
+                pass
 
     return deleted_count, errors
 
