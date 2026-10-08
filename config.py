@@ -27,6 +27,7 @@ EXCEL_CATALOGOS_PATH = DATA_DIR / "BD_Catalogos.xlsx"
 # Archivos de Imagen Institucional
 LOGO_SIGRAMA_PATH = BRAND_DIR / "logo_sigrama.png"
 FAVICON_PATH = BRAND_DIR / "favicon.png"
+BANNER_SIGRAMA_PATH = BRAND_DIR / "banner_sigrama.png"
 
 # Identidad Visual y Paleta Corporativa SIGRAMA
 COLOR_PRIMARY = "#EC2024"      # Rojo Corporativo SIGRAMA

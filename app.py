@@ -21,7 +21,8 @@ from config import (
     COLOR_SECONDARY,
     COLOR_BACKGROUND,
     LOGO_SIGRAMA_PATH,
-    FAVICON_PATH
+    FAVICON_PATH,
+    BANNER_SIGRAMA_PATH
 )
 from database import init_databases
 from modules.requisition_wizard import render_requisition_wizard
@@ -674,6 +675,9 @@ def main():
     # =========================================================================
     # ENCABEZADO SUPERIOR CORPORATIVO EN EL ÁREA PRINCIPAL
     # =========================================================================
+    if BANNER_SIGRAMA_PATH.exists():
+        st.image(str(BANNER_SIGRAMA_PATH), use_container_width=True)
+
     user_header_badge = ""
     u_display = st.session_state.get("usuario") or sso_user
     r_display = st.session_state.get("rol") or sso_role
