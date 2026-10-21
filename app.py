@@ -180,49 +180,68 @@ st.markdown("""
         font-family: 'Questrial', sans-serif !important;
     }
 
-    /* Radio de navegación en sidebar: diseño tipo pastillas Odoo moderno y legible */
+    /* Menú Lateral Estilo Google Workspace (Píldoras Material Design 3) */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child {
+        display: none !important;
+    }
     [data-testid="stSidebar"] div[role="radiogroup"] {
         background-color: transparent !important;
         border: none !important;
         padding: 0 !important;
-        gap: 6px !important;
+        gap: 3px !important;
         display: flex !important;
         flex-direction: column !important;
     }
-    [data-testid="stSidebar"] div[role="radiogroup"] label {
-        background-color: #18181B !important;
-        border: 1px solid #27272A !important;
-        color: #F1F5F9 !important;
-        padding: 10px 14px !important;
-        border-radius: 8px !important;
-        transition: all 0.2s ease !important;
-        margin: 0 !important;
+    [data-testid="stSidebar"] div[role="radiogroup"] > label {
+        background-color: transparent !important;
+        border: 1px solid transparent !important;
+        color: #CBD5E1 !important;
+        padding: 9px 18px !important;
+        border-radius: 24px !important;
+        transition: all 0.18s ease-in-out !important;
+        margin: 1px 0 !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
     }
     [data-testid="stSidebar"] div[role="radiogroup"] label p,
     [data-testid="stSidebar"] div[role="radiogroup"] label span {
-        font-size: 13.5px !important;
-        font-family: 'Montserrat', sans-serif !important;
+        font-size: 15px !important;
+        font-family: 'Questrial', sans-serif !important;
+        font-weight: 500 !important;
+        color: #CBD5E1 !important;
+        line-height: 1.35 !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover,
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover p,
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover span {
+        background-color: rgba(255, 255, 255, 0.08) !important;
+        border-color: transparent !important;
+        color: #FFFFFF !important;
+        border-radius: 24px !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
+    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] p,
+    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] span,
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked),
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p,
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) span {
+        background-color: rgba(236, 32, 36, 0.22) !important;
+        border: 1px solid rgba(236, 32, 36, 0.55) !important;
+        color: #FFFFFF !important;
         font-weight: 700 !important;
-        color: #F1F5F9 !important;
-        line-height: 1.4 !important;
+        border-radius: 24px !important;
     }
-    [data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-        background-color: #27272A !important;
-        border-color: #EC2024 !important;
-        color: #FFFFFF !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
-        background-color: #EC2024 !important;
-        border-color: #EC2024 !important;
-        box-shadow: 0 3px 10px rgba(236, 32, 36, 0.45) !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] p,
-    [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] span {
-        color: #FFFFFF !important;
-        font-weight: 800 !important;
+
+    /* Botón Google Workspace 'Redactar / Nuevo' (FAB Pill) */
+    div.stButton > button[key="btn_google_fab_req"] {
+        border-radius: 20px !important;
+        padding: 10px 20px !important;
+        font-size: 14.5px !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 14px rgba(236, 32, 36, 0.35) !important;
+        border: 1px solid rgba(236, 32, 36, 0.8) !important;
+        margin-bottom: 8px !important;
     }
 
     /* Botón Primario Corporativo SIGRAMA (#EC2024) */
@@ -670,24 +689,43 @@ def main():
                 st.session_state["rol"] = None
                 st.rerun()
 
-        # Menú de Navegación por Fases
-        menu_options = [
-            "📊 Panel de Control (Dashboard)",
-            "🗂️ Pipeline Kanban (CRM Odoo)",
-            "📝 Registro y Cotizaciones (Fase 1)",
-            "📑 Control de Orden de Compra (PO)",
-            "🔒 Mantenimiento y Respaldos"
+        # --- NAVEGACIÓN ESTILO GOOGLE WORKSPACE ---
+        if st.button("➕ Nueva Requisición", key="btn_google_fab_req", use_container_width=True, type="primary"):
+            st.session_state["req_google_nav"] = "📝 Registro"
+            st.rerun()
+
+        st.markdown("<p style='font-family: \"Montserrat\", sans-serif; font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 10px; margin-bottom: 6px;'>Menú Principal:</p>", unsafe_allow_html=True)
+
+        MENU_MAP_REQ = {
+            "📊 Resumen": "📊 Panel de Control (Dashboard)",
+            "🗂️ Kanban": "🗂️ Pipeline Kanban (CRM Odoo)",
+            "📝 Registro": "📝 Registro y Cotizaciones (Fase 1)",
+            "📑 Órdenes": "📑 Control de Orden de Compra (PO)",
+            "⚙️ Ajustes": "🔒 Mantenimiento y Respaldos"
+        }
+
+        google_menu_items = [
+            "📊 Resumen",
+            "🗂️ Kanban",
+            "📝 Registro",
+            "📑 Órdenes",
+            "⚙️ Ajustes"
         ]
 
-        if "selected_nav" not in st.session_state:
-            st.session_state["selected_nav"] = menu_options[0]  # Dashboard por defecto
+        curr_nav = st.session_state.get("req_google_nav", "📊 Resumen")
+        if curr_nav not in google_menu_items:
+            curr_nav = google_menu_items[0]
+        idx_nav = google_menu_items.index(curr_nav)
 
-        selected_menu = st.radio(
-            "Flujo de Operación:",
-            options=menu_options,
-            index=menu_options.index(st.session_state["selected_nav"]) if st.session_state["selected_nav"] in menu_options else 0,
+        selected_google = st.radio(
+            "Navegación:",
+            options=google_menu_items,
+            index=idx_nav,
+            key="radio_req_google",
             label_visibility="collapsed"
         )
+        st.session_state["req_google_nav"] = selected_google
+        selected_menu = MENU_MAP_REQ.get(selected_google, "📊 Panel de Control (Dashboard)")
         st.session_state["selected_nav"] = selected_menu
 
         st.markdown("<hr style='border-color:#27272A;'>", unsafe_allow_html=True)
